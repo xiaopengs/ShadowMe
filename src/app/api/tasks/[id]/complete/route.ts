@@ -36,12 +36,10 @@ export async function POST(
 
     const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as any;
     if (!row) {
-      db.close();
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
     if (row.status !== 'in_progress') {
-      db.close();
       return NextResponse.json({ error: 'Task is not in progress' }, { status: 400 });
     }
 
@@ -70,7 +68,6 @@ export async function POST(
     `).run(id, 'completed', 'shadow-clone', JSON.stringify({ result: resultData }), now);
 
     const updated = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
-    db.close();
 
     return NextResponse.json(rowToTask(updated));
   } catch (error) {

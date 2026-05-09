@@ -5,13 +5,9 @@ import fs from 'fs';
 const DB_DIR = path.join(process.cwd(), 'data');
 const DB_PATH = path.join(DB_DIR, 'shadow-clone.db');
 
-export function initDatabase() {
-  if (!fs.existsSync(DB_DIR)) {
-    fs.mkdirSync(DB_DIR, { recursive: true });
-  }
+let dbInstance: Database | null = null;
 
-  const db = new Database(DB_PATH);
-
+function createTables(db: Database) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS tasks (
       id TEXT PRIMARY KEY,
@@ -62,7 +58,9 @@ export function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority);
     CREATE INDEX IF NOT EXISTS idx_logs_task_id ON logs(task_id);
   `);
+}
 
+function seedData(db: Database) {
   const existingShadow = db.prepare('SELECT * FROM shadow_status WHERE id = ?').get('shadow-1');
   if (!existingShadow) {
     db.prepare(`
@@ -77,25 +75,29 @@ export function initDatabase() {
       new Date().toISOString()
     );
   }
-
-  db.close();
-  console.log('Database initialized successfully');
 }
 
-let dbInstance: Database | null = null;
-
-export function getDatabase(): Database {
-  if (dbInstance) return dbInstance;
-
+export function initDatabase(): Database {
   if (!fs.existsSync(DB_DIR)) {
     fs.mkdirSync(DB_DIR, { recursive: true });
   }
 
+  const db = new Database(DB_PATH);
+  createTables(db);
+  seedData(db);
+  console.log('Database initialized successfully');
+  return db;
+}
+
+export function getDatabase(): Database {
+  if (dbInstance) return dbInstance;
+
   if (!fs.existsSync(DB_PATH)) {
-    initDatabase();
+    dbInstance = initDatabase();
+  } else {
+    dbInstance = new Database(DB_PATH);
   }
 
-  dbInstance = new Database(DB_PATH);
   return dbInstance;
 }
 
@@ -107,5 +109,6 @@ export function closeDatabase(): void {
 }
 
 if (require.main === module) {
-  initDatabase();
+  const db = initDatabase();
+  db.close();
 }

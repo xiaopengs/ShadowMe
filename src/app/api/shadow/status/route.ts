@@ -8,7 +8,6 @@ export async function GET() {
     const row = db.prepare('SELECT * FROM shadow_status WHERE id = ?').get('shadow-1') as any;
 
     if (!row) {
-      db.close();
       const defaultShadow: ShadowState = {
         id: 'shadow-1',
         name: '影子分身',
@@ -54,7 +53,6 @@ export async function GET() {
       }
     }
 
-    db.close();
     return NextResponse.json(shadow);
   } catch (error) {
     console.error('Error fetching shadow status:', error);
@@ -92,7 +90,6 @@ export async function POST(request: Request) {
     }
 
     const row = db.prepare('SELECT * FROM shadow_status WHERE id = ?').get('shadow-1') as any;
-    db.close();
 
     return NextResponse.json({
       id: row.id,

@@ -31,7 +31,6 @@ export async function GET(
     const { id } = await params;
     const db = getDatabase();
     const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
-    db.close();
 
     if (!row) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
@@ -56,7 +55,6 @@ export async function PATCH(
     const existing = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
 
     if (!existing) {
-      db.close();
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
@@ -116,7 +114,6 @@ export async function PATCH(
     `).run(id, 'updated', body.updatedBy || 'system', JSON.stringify(body), new Date().toISOString());
 
     const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
-    db.close();
 
     return NextResponse.json(rowToTask(row));
   } catch (error) {
@@ -135,13 +132,11 @@ export async function DELETE(
 
     const existing = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
     if (!existing) {
-      db.close();
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
     db.prepare('DELETE FROM tasks WHERE id = ?').run(id);
     db.prepare('DELETE FROM logs WHERE task_id = ?').run(id);
-    db.close();
 
     return NextResponse.json({ success: true });
   } catch (error) {

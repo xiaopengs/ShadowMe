@@ -55,7 +55,6 @@ export async function GET() {
       stats.avgCompletionTime = Math.round(totalCompletionTime / completedCount / (1000 * 60));
     }
 
-    db.close();
     return NextResponse.json(stats);
   } catch (error) {
     console.error('Error fetching board stats:', error);

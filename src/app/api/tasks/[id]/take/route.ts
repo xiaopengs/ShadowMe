@@ -33,12 +33,10 @@ export async function POST(
 
     const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as any;
     if (!row) {
-      db.close();
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
     if (row.status !== 'pending') {
-      db.close();
       return NextResponse.json({ error: 'Task is not pending' }, { status: 400 });
     }
 
@@ -62,7 +60,6 @@ export async function POST(
     `).run(id, 'taken', 'shadow-clone', JSON.stringify({ source: 'manual' }), now);
 
     const updated = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
-    db.close();
 
     return NextResponse.json(rowToTask(updated));
   } catch (error) {

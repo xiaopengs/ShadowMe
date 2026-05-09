@@ -11,10 +11,10 @@ function rowToTask(row: any): Task {
     priority: row.priority,
     status: row.status as TaskStatus,
     description: row.description || '',
-    tags: JSON.parse(row.tags || '[]'),
-    attachments: JSON.parse(row.attachments || '[]'),
+    tags: typeof row.tags === 'string' ? JSON.parse(row.tags || '[]') : (row.tags || []),
+    attachments: typeof row.attachments === 'string' ? JSON.parse(row.attachments || '[]') : (row.attachments || []),
     expectedDelivery: row.expected_delivery,
-    result: row.result ? JSON.parse(row.result) : undefined,
+    result: row.result ? (typeof row.result === 'string' ? JSON.parse(row.result) : row.result) : undefined,
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -51,8 +51,6 @@ export async function GET(request: Request) {
     query += ' ORDER BY created_at DESC';
 
     const rows = db.prepare(query).all(...params);
-    db.close();
-
     const tasks = rows.map(rowToTask);
     return NextResponse.json({ tasks, total: tasks.length });
   } catch (error) {
@@ -109,8 +107,6 @@ export async function POST(request: Request) {
     `).run(id, 'created', createdBy, JSON.stringify({ type, priority }), now);
 
     const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
-    db.close();
-
     return NextResponse.json(rowToTask(row), { status: 201 });
   } catch (error) {
     console.error('Error creating task:', error);
