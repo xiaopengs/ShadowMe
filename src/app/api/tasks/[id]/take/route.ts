@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import type { Task, TaskStatus } from '@/types';
+
+const apiLogger = logger.child({ module: 'api/tasks/[id]/take' });
 
 function rowToTask(row: any): Task {
   return {
@@ -33,10 +36,12 @@ export async function POST(
 
     const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as any;
     if (!row) {
+      apiLogger.warn('Task not found for taking', { taskId: id, operation: 'POST' });
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
     if (row.status !== 'pending') {
+      apiLogger.warn('Task not pending', { taskId: id, currentStatus: row.status });
       return NextResponse.json({ error: 'Task is not pending' }, { status: 400 });
     }
 
@@ -61,9 +66,10 @@ export async function POST(
 
     const updated = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
 
+    apiLogger.info('Task taken', { taskId: id });
     return NextResponse.json(rowToTask(updated));
   } catch (error) {
-    console.error('Error taking task:', error);
+    apiLogger.error('Error taking task', error, { taskId: (await params).id, operation: 'POST' });
     return NextResponse.json({ error: 'Failed to take task' }, { status: 500 });
   }
 }

@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import type { Task, TaskStatus } from '@/types';
+
+const apiLogger = logger.child({ module: 'api/tasks/[id]' });
 
 function rowToTask(row: any): Task {
   return {
@@ -33,12 +36,14 @@ export async function GET(
     const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
 
     if (!row) {
+      apiLogger.warn('Task not found', { taskId: id, operation: 'GET' });
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
+    apiLogger.info('Task fetched', { taskId: id });
     return NextResponse.json(rowToTask(row));
   } catch (error) {
-    console.error('Error fetching task:', error);
+    apiLogger.error('Error fetching task', error, { taskId: (await params).id, operation: 'GET' });
     return NextResponse.json({ error: 'Failed to fetch task' }, { status: 500 });
   }
 }
@@ -55,6 +60,7 @@ export async function PATCH(
     const existing = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
 
     if (!existing) {
+      apiLogger.warn('Task not found for update', { taskId: id, operation: 'PATCH' });
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
@@ -115,9 +121,10 @@ export async function PATCH(
 
     const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
 
+    apiLogger.info('Task updated', { taskId: id, updates: Object.keys(body) });
     return NextResponse.json(rowToTask(row));
   } catch (error) {
-    console.error('Error updating task:', error);
+    apiLogger.error('Error updating task', error, { taskId: (await params).id, operation: 'PATCH' });
     return NextResponse.json({ error: 'Failed to update task' }, { status: 500 });
   }
 }
@@ -132,15 +139,17 @@ export async function DELETE(
 
     const existing = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
     if (!existing) {
+      apiLogger.warn('Task not found for delete', { taskId: id, operation: 'DELETE' });
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
     db.prepare('DELETE FROM tasks WHERE id = ?').run(id);
     db.prepare('DELETE FROM logs WHERE task_id = ?').run(id);
 
+    apiLogger.info('Task deleted', { taskId: id });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting task:', error);
+    apiLogger.error('Error deleting task', error, { taskId: (await params).id, operation: 'DELETE' });
     return NextResponse.json({ error: 'Failed to delete task' }, { status: 500 });
   }
 }

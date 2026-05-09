@@ -5,6 +5,7 @@ import { AppProvider } from "@/context/AppContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ConfirmDialogProvider } from "@/components/ui/ConfirmDialog";
 import { ToastProvider } from "@/components/ui/Toast";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -77,7 +78,9 @@ export default function RootLayout({
           <AppProvider>
             <ConfirmDialogProvider>
               <ToastProvider>
-                {children}
+                <ErrorBoundary>
+                  {children}
+                </ErrorBoundary>
               </ToastProvider>
             </ConfirmDialogProvider>
           </AppProvider>

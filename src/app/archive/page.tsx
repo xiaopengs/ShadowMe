@@ -7,12 +7,12 @@ import {
   Search,
   CheckCircle,
   ExternalLink,
-  Loader2,
   AlertCircle,
   Package,
   ChevronRight
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
+import { ArchiveSkeleton } from '@/components/ui/Skeletons';
 import type { Task } from '@/types';
 
 export default function ArchivePage() {
@@ -90,11 +90,7 @@ export default function ArchivePage() {
         </div>
 
         {/* Loading State */}
-        {isLoading && (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 size={32} className="animate-spin text-[var(--color-primary)]" />
-          </div>
-        )}
+        {isLoading && <ArchiveSkeleton />}
 
         {/* Error State */}
         {error && !isLoading && (

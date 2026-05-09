@@ -5,24 +5,23 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft,
   GitBranch,
   ChevronRight,
   Send,
   CheckCircle,
   Loader2,
-  User,
-  Bot,
   AlertCircle,
+  Paperclip,
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
-import { useToast } from '@/components/ui/Toast';
+import GlassHeader from '@/components/ui/GlassHeader';
+import CCSyncLog from '@/components/ui/CCSyncLog';
+import { TaskDetailSkeleton } from '@/components/ui/Skeletons';
 import type { Task, Priority, SyncMessage } from '@/types';
 
 export default function TaskDetailPage() {
   const params = useParams();
   const taskId = params.id as string;
-  const { showToast } = useToast();
 
   const [task, setTask] = useState<Task | null>(null);
   const [messages, setMessages] = useState<SyncMessage[]>([]);
@@ -30,7 +29,34 @@ export default function TaskDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
-  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+
+  // Demo messages for terminal style
+  const [demoMessages] = useState<SyncMessage[]>([
+    {
+      id: 'msg-1',
+      type: 'user',
+      content: '@ClaudeCode Please analyze `auth.ts` and draft a refactoring plan to implement Redis caching as described in the task.',
+      timestamp: new Date(Date.now() - 300000).toISOString(),
+    },
+    {
+      id: 'msg-2',
+      type: 'system',
+      content: 'Task Triggered',
+      timestamp: new Date(Date.now() - 295000).toISOString(),
+    },
+    {
+      id: 'msg-3',
+      type: 'claude',
+      content: '> Analyzing src/api/middleware/auth.ts...\n> Found 3 dependencies: DatabaseClient, Logger, MetricService.\n> Identifying bottleneck: Await DatabaseClient.verifyToken(token) on line 42.\n> Proposing Redis integration pattern: Cache-Aside.\n> Generating diff for review...',
+      timestamp: new Date(Date.now() - 290000).toISOString(),
+    },
+    {
+      id: 'msg-4',
+      type: 'claude',
+      content: 'I have analyzed the middleware. The primary bottleneck is the direct database query on line 42. I\'ve drafted a plan to introduce a Redis cache layer.\n\nI\'ve committed the preliminary changes to the feature branch. Please review the diff in GitLab before I run the unit tests.',
+      timestamp: new Date(Date.now() - 280000).toISOString(),
+    },
+  ]);
 
   // Fetch task data
   const fetchTask = useCallback(async () => {
@@ -89,11 +115,6 @@ export default function TaskDetailPage() {
     }
   };
 
-  const formatTime = (timestamp: string | Date) => {
-    const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
-    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  };
-
   const formatDate = (timestamp: string | Date) => {
     const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -110,21 +131,18 @@ export default function TaskDetailPage() {
       timestamp: new Date().toISOString(),
     };
 
-    // Optimistically add user message
-    setMessages(prev => [...prev, userMessage]);
-    const currentInput = inputValue;
+    // Use demo messages for now
+    setMessages(prev => [...demoMessages, userMessage]);
     setInputValue('');
 
     try {
       const res = await fetch(`/api/tasks/${taskId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: currentInput, type: 'user' }),
+        body: JSON.stringify({ content: inputValue, type: 'user' }),
       });
 
       if (!res.ok) throw new Error('Failed to send message');
-
-      // Refresh messages after sending
       await pollMessages();
 
       // Simulate Claude response after sending
@@ -133,8 +151,6 @@ export default function TaskDetailPage() {
       }, 2000);
     } catch (err) {
       console.error('Error sending message:', err);
-      // Remove the optimistic update on error
-      setMessages(prev => prev.filter(m => m.id !== userMessage.id));
     } finally {
       setIsSending(false);
     }
@@ -144,18 +160,8 @@ export default function TaskDetailPage() {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="max-w-7xl mx-auto">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-[var(--color-on-surface-variant)] hover:text-[var(--color-primary)] transition-colors mb-6"
-          >
-            <ArrowLeft size={18} />
-            <span className="font-body text-sm">Back to Dashboard</span>
-          </Link>
-          <div className="flex items-center justify-center h-64">
-            <Loader2 size={32} className="animate-spin text-[var(--color-primary)]" />
-          </div>
-        </div>
+        <GlassHeader showBackButton backHref="/tasks" />
+        <TaskDetailSkeleton />
       </AppLayout>
     );
   }
@@ -164,17 +170,17 @@ export default function TaskDetailPage() {
   if (error || !task) {
     return (
       <AppLayout>
-        <div className="max-w-7xl mx-auto">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-[var(--color-on-surface-variant)] hover:text-[var(--color-primary)] transition-colors mb-6"
-          >
-            <ArrowLeft size={18} />
-            <span className="font-body text-sm">Back to Dashboard</span>
-          </Link>
+        <GlassHeader showBackButton backHref="/tasks" />
+        <div className="max-w-7xl mx-auto p-4 md:p-8">
           <div className="flex flex-col items-center justify-center h-64 gap-4">
             <AlertCircle size={48} className="text-[var(--color-error)]" />
             <p className="text-[var(--color-on-surface)] font-body">{error || 'Task not found'}</p>
+            <Link 
+              href="/tasks"
+              className="px-4 py-2 bg-[var(--color-primary)] text-[var(--color-on-primary)] rounded-lg font-body text-sm"
+            >
+              Back to Task List
+            </Link>
           </div>
         </div>
       </AppLayout>
@@ -188,288 +194,142 @@ export default function TaskDetailPage() {
     'Get approval from team lead',
   ];
 
+  // Determine CC status based on task state
+  const ccStatus = task.status === 'in_progress' ? 'working' : task.status === 'completed' ? 'idle' : 'idle';
+
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto">
+      {/* Glass Header */}
+      <GlassHeader 
+        showBackButton 
+        backHref="/tasks" 
+        showCCStatus 
+        ccStatus={ccStatus}
+      />
+      
+      <div className="max-w-[1600px] mx-auto p-4 md:p-6">
         {/* Breadcrumb Navigation */}
-        <nav className="flex items-center gap-2 text-sm text-[var(--color-on-surface-variant)] mb-6">
+        <nav className="flex items-center gap-2 text-xs text-[var(--color-on-surface-variant)] mb-6">
           <Link href="/" className="hover:text-[var(--color-primary)] transition-colors">Dashboard</Link>
-          <ChevronRight size={14} />
+          <ChevronRight size={12} />
           <Link href="/tasks" className="hover:text-[var(--color-primary)] transition-colors">Task List</Link>
-          <ChevronRight size={14} />
+          <ChevronRight size={12} />
           <span className="text-[var(--color-on-surface)]">{task.id.slice(0, 10).toUpperCase()}</span>
         </nav>
 
-        {/* Task Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_500px] gap-6 items-start">
           {/* Left Column: Task Details */}
-          <div className="lg:col-span-5 space-y-6">
-            {/* Task Info Card */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-[var(--color-surface-container-low)] rounded-xl p-6 border border-[var(--color-outline-variant)]/30 shadow-[var(--shadow-card)]"
-            >
-              {/* Task ID & Status */}
-              <div className="flex items-center justify-between mb-4">
-                <span className="code-label text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-3 py-1 rounded">
-                  {task.id.slice(0, 10).toUpperCase()}
-                </span>
-                <span className={`priority-badge ${getPriorityClass(task.priority)}`}>
-                  {task.priority}
-                </span>
+          <section className="
+            rounded-xl p-6 flex flex-col gap-6
+            bg-gradient-to-br from-[var(--color-surface-container-low)]/80 to-[var(--color-surface-container-low)]/90
+            backdrop-blur-xl border border-[var(--color-outline-variant)]/10
+            shadow-[0_8px_32px_rgba(0,0,0,0.1)]
+          ">
+            {/* Task ID & Title */}
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-code-label text-[10px] text-[var(--color-secondary)] mb-2">{task.id.slice(0, 10).toUpperCase()}</p>
+                <h1 className="font-headline text-2xl md:text-3xl text-[var(--color-on-surface)] leading-tight">
+                  {task.title}
+                </h1>
               </div>
+              <button className="w-10 h-10 rounded-lg bg-[var(--color-surface-variant)] hover:bg-[var(--color-surface-bright)] flex items-center justify-center text-[var(--color-on-surface-variant)] transition-colors border border-[var(--color-outline-variant)]/30">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" />
+                </svg>
+              </button>
+            </div>
 
-              {/* Title */}
-              <h1 className="font-headline text-2xl text-[var(--color-on-surface)] mb-4">
-                {task.title}
-              </h1>
-
-              {/* Meta Info */}
-              <div className="flex items-center gap-4 mb-6 text-sm flex-wrap">
-                <div className="flex items-center gap-2">
+            {/* Meta Info Bar */}
+            <div className="flex flex-wrap gap-4 items-center py-4 border-y border-[var(--color-outline-variant)]/20">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[var(--color-surface-bright)] border border-[var(--color-outline-variant)]/50 overflow-hidden shrink-0">
                   <img
                     src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face"
                     alt={task.createdBy}
-                    className="w-6 h-6 rounded-full"
+                    className="w-full h-full object-cover"
                   />
-                  <span className="text-[var(--color-on-surface-variant)]">{task.createdBy}</span>
                 </div>
-                <div className="flex items-center gap-1 text-[var(--color-outline)]">
-                  <GitBranch size={14} />
-                  <span className="text-xs">main</span>
+                <div className="flex flex-col">
+                  <span className="font-body text-xs text-[var(--color-on-surface-variant)]">Created by</span>
+                  <span className="font-body text-xs font-medium text-[var(--color-on-surface)]">{task.createdBy}</span>
                 </div>
-                <span className="text-xs text-[var(--color-outline)]">
-                  {formatDate(task.createdAt)}
+              </div>
+              
+              <div className="h-8 w-px bg-[var(--color-outline-variant)]/30 hidden md:block" />
+              
+              <div className="flex flex-col">
+                <span className="font-body text-xs text-[var(--color-on-surface-variant)]">Priority</span>
+                <span className={`font-body text-xs font-medium flex items-center gap-1 ${getPriorityClass(task.priority)}`}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2L4 20h16L12 2z" />
+                  </svg>
+                  {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
                 </span>
               </div>
-
-              {/* Description */}
-              <div className="mb-6">
-                <h3 className="code-label text-[var(--color-on-surface-variant)] mb-2">DESCRIPTION</h3>
-                <p className="font-body text-sm text-[var(--color-on-surface)] leading-relaxed">
-                  {task.description || 'No description provided.'}
-                </p>
-              </div>
-
-              {/* Tags */}
-              {task.tags && task.tags.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="code-label text-[var(--color-on-surface-variant)] mb-2">TAGS</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {task.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2 py-1 bg-[var(--color-surface-variant)] text-[var(--color-on-surface-variant)] rounded text-xs"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Acceptance Criteria */}
-              <div className="mb-6">
-                <h3 className="code-label text-[var(--color-on-surface-variant)] mb-3">ACCEPTANCE CRITERIA</h3>
-                <ul className="space-y-2">
-                  {acceptanceCriteria.map((criteria, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <CheckCircle size={16} className="text-[var(--color-secondary)] mt-0.5 flex-shrink-0" />
-                      <span className="font-body text-sm text-[var(--color-on-surface)]">{criteria}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* GitLab Integration */}
-              <div className="pt-4 border-t border-[var(--color-outline-variant)]/30">
-                <h3 className="code-label text-[var(--color-on-surface-variant)] mb-3">GITLAB INTEGRATION</h3>
-                
-                {/* MR Link Display for Completed Tasks */}
-                {task.status === 'completed' && task.result?.url ? (
-                  <div className="bg-[var(--color-secondary)]/10 border border-[var(--color-secondary)]/30 rounded-lg p-4 mb-3">
-                    <div className="flex items-center gap-2 text-[var(--color-secondary)] mb-2">
-                      <CheckCircle size={18} />
-                      <span className="font-body text-sm font-semibold">Merge Request Created</span>
-                    </div>
-                    <a 
-                      href={task.result.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-[var(--color-primary)] text-sm hover:underline break-all mb-1 block"
-                    >
-                      {task.result.url}
-                    </a>
-                    {task.result.commitSha && (
-                      <code className="text-xs font-mono text-[var(--color-on-surface-variant)] bg-[var(--color-surface-container)] px-2 py-1 rounded">
-                        {task.result.commitSha}
-                      </code>
-                    )}
-                  </div>
-                ) : (
-                  <button className="w-full flex items-center justify-center gap-2 py-3 bg-[var(--color-primary)] text-[var(--color-on-primary)] rounded-lg font-body text-sm font-semibold hover:bg-[var(--color-primary-container)] transition-colors shadow-[0_0_15px_rgba(208,188,255,0.4)]">
-                    <GitBranch size={18} />
-                    Create Merge Request
-                    <ChevronRight size={16} />
-                  </button>
-                )}
-              </div>
-            </motion.div>
-
-            {/* Task Status Card */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-[var(--color-surface-container)] rounded-xl p-4 border border-[var(--color-outline-variant)]/20"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="code-label text-[var(--color-on-surface)]">TASK STATUS</span>
-                <span className="status-mono text-[var(--color-secondary)] uppercase">
-                  {task.status.replace('_', ' ')}
+              
+              <div className="h-8 w-px bg-[var(--color-outline-variant)]/30 hidden md:block" />
+              
+              <div className="flex flex-col">
+                <span className="font-body text-xs text-[var(--color-on-surface-variant)]">Target Branch</span>
+                <span className="font-code-label text-[10px] text-[var(--color-secondary)] bg-[var(--color-surface-container)] px-2 py-0.5 rounded border border-[var(--color-outline-variant)]/30">
+                  feature/auth-v2
                 </span>
               </div>
-              <div className="w-full bg-[var(--color-surface-container-low)] rounded-full h-2">
-                <div 
-                  className="bg-[var(--color-primary)] h-2 rounded-full shadow-energy-glow transition-all" 
-                  style={{ 
-                    width: task.status === 'completed' ? '100%' : 
-                           task.status === 'in_progress' ? '50%' : 
-                           task.status === 'needs_feedback' ? '75%' : '25%'
-                  }} 
-                />
-              </div>
-              <p className="text-xs text-[var(--color-on-surface-variant)] mt-2">
-                {task.startedAt 
-                  ? `Started ${formatDate(task.startedAt)}`
-                  : 'Not started yet'
-                }
+            </div>
+
+            {/* Description */}
+            <div>
+              <p className="font-body text-sm text-[var(--color-on-surface-variant)] leading-relaxed">
+                {task.description || 'No description provided.'}
               </p>
-            </motion.div>
-          </div>
+              
+              <h3 className="font-headline text-base text-[var(--color-on-surface)] mt-6 mb-3">Acceptance Criteria:</h3>
+              <ul className="space-y-2">
+                {acceptanceCriteria.map((criteria, index) => (
+                  <li key={index} className="flex items-start gap-2">
+                    <CheckCircle size={14} className="text-[var(--color-secondary)] mt-0.5 flex-shrink-0" />
+                    <span className="font-body text-sm text-[var(--color-on-surface-variant)]">{criteria}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          {/* Right Column: CC Sync Log */}
-          <div className="lg:col-span-7">
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-[var(--color-surface-container-low)] rounded-xl border border-[var(--color-outline-variant)]/30 shadow-[var(--shadow-card)] flex flex-col h-[calc(100vh-180px)] min-h-[600px]"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-[var(--color-outline-variant)]/30">
+            {/* GitLab Integration */}
+            <div className="mt-auto pt-6 border-t border-[var(--color-outline-variant)]/20">
+              <div className="bg-[var(--color-surface-container)] rounded-lg p-4 border border-[var(--color-outline-variant)]/30 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[var(--color-secondary)]/20 flex items-center justify-center">
-                    <Bot size={18} className="text-[var(--color-secondary)]" />
+                  <div className="w-10 h-10 rounded-full bg-[var(--color-secondary)]/20 flex items-center justify-center">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[var(--color-secondary)]">
+                      <polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" />
+                    </svg>
                   </div>
-                  <div>
-                    <h3 className="font-body text-sm font-semibold text-[var(--color-on-surface)]">
-                      Claude Code Sync Log
-                    </h3>
-                    <p className="text-xs text-[var(--color-on-surface-variant)]">
-                      Real-time collaboration stream
-                    </p>
+                  <div className="flex flex-col">
+                    <span className="font-body text-sm font-medium text-[var(--color-on-surface)]">GitLab Integration</span>
+                    <span className="font-body text-xs text-[var(--color-on-surface-variant)]">Branch created, ready for merge request.</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[var(--color-secondary)] animate-pulse" />
-                  <span className="status-mono text-[var(--color-secondary)] text-[10px]">LIVE</span>
-                </div>
+                <button className="px-4 py-2 bg-[var(--color-primary)] text-[var(--color-on-primary)] rounded-lg font-body text-sm font-medium hover:bg-[var(--color-primary-container)] transition-all shadow-[0_0_15px_rgba(var(--color-primary-rgb, 194,101,42),0.3)] flex items-center gap-2">
+                  Create MR
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                    <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+                  </svg>
+                </button>
               </div>
+            </div>
+          </section>
 
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-center">
-                    <Bot size={48} className="text-[var(--color-outline)] mb-4" />
-                    <p className="text-[var(--color-on-surface-variant)] font-body">
-                      No messages yet. Start a conversation!
-                    </p>
-                  </div>
-                ) : (
-                  messages.map((msg) => (
-                    <motion.div
-                      key={msg.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`flex gap-3 ${msg.type === 'user' ? 'flex-row-reverse' : ''}`}
-                    >
-                      {/* Avatar */}
-                      <div className={`
-                        w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
-                        ${msg.type === 'user' 
-                          ? 'bg-[var(--color-primary)]/20' 
-                          : msg.type === 'claude'
-                            ? 'bg-[var(--color-secondary)]/20'
-                            : 'bg-[var(--color-outline)]/20'
-                        }
-                      `}>
-                        {msg.type === 'user' ? (
-                          <User size={16} className="text-[var(--color-primary)]" />
-                        ) : msg.type === 'claude' ? (
-                          <Bot size={16} className="text-[var(--color-secondary)]" />
-                        ) : (
-                          <Loader2 size={14} className="text-[var(--color-outline)] animate-spin" />
-                        )}
-                      </div>
-
-                      {/* Message Content */}
-                      <div className={`max-w-[80%] ${msg.type === 'user' ? 'text-right' : ''}`}>
-                        <div className={`
-                          inline-block px-4 py-2 rounded-2xl text-sm font-body
-                          ${msg.type === 'user' 
-                            ? 'bg-[var(--color-primary)]/10 text-[var(--color-on-surface)] rounded-tr-sm' 
-                            : msg.type === 'claude'
-                              ? 'bg-[var(--color-surface-container-high)] text-[var(--color-on-surface)] rounded-tl-sm'
-                              : 'bg-[var(--color-surface-container)] text-[var(--color-on-surface-variant)] text-xs font-mono'
-                          }
-                        `}>
-                          {msg.content.split('\n').map((line, i) => (
-                            <p key={i} className={line.startsWith('>') ? 'text-[var(--color-secondary)]' : ''}>
-                              {line}
-                            </p>
-                          ))}
-                        </div>
-                        <p className="text-[10px] text-[var(--color-outline)] mt-1 px-1">
-                          {formatTime(msg.timestamp)}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))
-                )}
-              </div>
-
-              {/* Input */}
-              <div className="p-4 border-t border-[var(--color-outline-variant)]/30">
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && !isSending && handleSendMessage()}
-                    placeholder="Reply to Claude Code..."
-                    className="flex-1 bg-[var(--color-surface-container)] border border-[var(--color-outline-variant)]/50 rounded-xl px-4 py-3 text-sm text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[0_0_15px_rgba(208,188,255,0.3)] transition-all font-body"
-                    disabled={isSending}
-                  />
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={!inputValue.trim() || isSending}
-                    className="px-4 py-3 bg-[var(--color-primary)] text-[var(--color-on-primary)] rounded-xl hover:bg-[var(--color-primary-container)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_0_15px_rgba(208,188,255,0.4)]"
-                  >
-                    {isSending ? (
-                      <Loader2 size={18} className="animate-spin" />
-                    ) : (
-                      <Send size={18} />
-                    )}
-                  </button>
-                </div>
-                <p className="text-[10px] text-[var(--color-outline)] mt-2 text-center">
-                  Claude Code processes requests locally • No data leaves your machine
-                </p>
-              </div>
-            </motion.div>
-          </div>
+          {/* Right Column: CC Sync Log - Terminal Style */}
+          <section className="h-[calc(100vh-140px)] lg:h-auto lg:max-h-[calc(100vh-140px)]">
+            <CCSyncLog
+              messages={messages.length > 0 ? messages : demoMessages}
+              onSendMessage={handleSendMessage}
+              isLoading={isSending}
+              className="h-full"
+            />
+          </section>
         </div>
       </div>
     </AppLayout>

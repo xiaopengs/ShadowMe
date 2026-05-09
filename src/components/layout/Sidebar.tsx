@@ -1,4 +1,8 @@
-// UI-POLISH: 修复了头像glow效果、导航选中状态（border-r-4）、Sync CC按钮样式、底部链接样式
+/**
+ * Sidebar Component - Enhanced with design system alignment
+ * Features: Energy glow avatar, Sync CC button, Support/Documentation links
+ * Source: detail_log_1/code.html, create_task/code.html
+ */
 'use client';
 
 import React, { useState } from 'react';
@@ -18,7 +22,7 @@ import {
   ChevronDown,
   Palette,
   Wifi,
-  WifiOff
+  WifiOff,
 } from 'lucide-react';
 import { useTheme, THEMES, type Theme } from '@/context/ThemeContext';
 import { useApp } from '@/context/AppContext';
@@ -46,42 +50,58 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     setThemeDropdownOpen(false);
   };
 
+  const handleSyncCC = async () => {
+    // TODO: Implement actual sync functionality
+    console.log('Syncing Claude Code...');
+  };
+
+  const getStatusColor = () => {
+    switch (state.shadow.status) {
+      case 'online': return 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]';
+      case 'busy': return 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]';
+      case 'offline': return 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  const getStatusLabel = () => {
+    switch (state.shadow.status) {
+      case 'online': return 'Active';
+      case 'busy': return 'Working';
+      case 'offline': return 'Offline';
+      default: return 'Unknown';
+    }
+  };
+
   const sidebarContent = (
     <div className="flex flex-col h-full">
-      {/* User Profile Section */}
+      {/* User Profile Section with Energy Glow */}
       <div className="px-6 mb-6">
         <div className="flex items-center gap-3">
           {/* Avatar with energy glow effect */}
           <div className="relative">
-            <div className="absolute inset-0 rounded-full bg-[var(--color-primary)]/30 blur-md shadow-energy-glow" />
+            {/* Glow layers */}
+            <div className="absolute inset-0 rounded-full bg-[var(--color-primary)]/20 blur-xl" />
+            <div className="absolute inset-0 rounded-full bg-[var(--color-primary)]/10 blur-md animate-pulse" />
+            {/* Avatar */}
             <img
               src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop&crop=face"
               alt="Shadow Clone Alpha"
-              className="relative w-11 h-11 rounded-full object-cover border-2 border-[var(--color-primary)] shadow-energy-glow"
+              className="relative w-11 h-11 rounded-full object-cover border-2 border-[var(--color-primary)] shadow-[0_0_12px_rgba(var(--color-primary-rgb, 194,101,42),0.5)]"
             />
-            {/* Active status indicator */}
-            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-[var(--color-surface-container-low)] shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+            {/* Active status indicator with glow */}
+            <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 ${getStatusColor()} rounded-full border-2 border-[var(--color-surface-container-low)]`} />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="font-headline text-base font-bold text-[var(--color-primary)] truncate">
+            <h1 className="font-headline text-base font-bold text-[var(--color-primary)] truncate tracking-tight">
               Shadow Clone Alpha
             </h1>
-            <p className="text-xs text-[var(--color-on-surface-variant)] flex items-center gap-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                state.shadow.status === 'online' 
-                  ? 'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]' 
-                  : state.shadow.status === 'busy'
-                    ? 'bg-yellow-500 shadow-[0_0_6px_rgba(234,179,8,0.5)]'
-                    : state.shadow.status === 'offline'
-                      ? 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]'
-                      : 'bg-gray-500'
-              }`} />
-              <span className="truncate">
-                {state.shadow.status === 'online' ? 'Active' : 
-                 state.shadow.status === 'busy' ? 'Working' : 
-                 state.shadow.status === 'offline' ? 'Offline' : 'Unknown'}
+            <div className="flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${getStatusColor()}`} />
+              <span className="text-[10px] text-[var(--color-on-surface-variant)] truncate">
+                Local Claude Code: {getStatusLabel()}
               </span>
-            </p>
+            </div>
           </div>
         </div>
       </div>
@@ -97,14 +117,17 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               href={item.href}
               onClick={onMobileClose}
               className={`
-                flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200
+                flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 relative
                 ${isActive 
-                  ? 'bg-[var(--color-primary-container)]/20 text-[var(--color-primary)] border-r-4 border-[var(--color-primary)] font-medium shadow-[inset_2px_0_12px_rgba(var(--color-primary-rgb, 194,101,42),0.15)]' 
+                  ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-r-4 border-[var(--color-primary)] font-medium shadow-[inset_2px_0_12px_rgba(var(--color-primary-rgb, 194,101,42),0.15)]' 
                   : 'text-[var(--color-on-surface-variant)] hover:bg-[var(--color-surface-variant)]/50 hover:text-[var(--color-on-surface)]'
                 }
               `}
             >
-              <Icon size={20} className={isActive ? 'filled-icon' : ''} />
+              {isActive && (
+                <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[var(--color-primary)] shadow-[0_0_10px_rgba(var(--color-primary-rgb, 194,101,42),0.5)]" />
+              )}
+              <Icon size={20} className={isActive ? 'opacity-100' : 'opacity-70'} />
               <span className="font-body text-sm">{item.label}</span>
             </Link>
           );
@@ -113,23 +136,35 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
       {/* Bottom Actions */}
       <div className="px-4 mt-auto space-y-3">
-        {/* Sync CC Button - 浅橙色实心按钮样式 */}
-        <button className="w-full py-2.5 bg-[var(--color-secondary)] text-[var(--color-on-secondary)] rounded-lg font-body text-sm font-medium hover:bg-[var(--color-secondary-container)] transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_2px_8px_rgba(var(--color-secondary-rgb,120,112,106),0.25)] active:scale-[0.98]">
-          <RefreshCw size={16} className="animate-spin-slow" />
-          Sync CC
+        {/* Sync CC Button - Design spec style */}
+        <button 
+          onClick={handleSyncCC}
+          className="
+            w-full py-2.5 
+            bg-[var(--color-secondary)]/10 border border-[var(--color-secondary)] text-[var(--color-secondary)] 
+            rounded-lg font-code-label text-[10px] tracking-wider
+            hover:bg-[var(--color-secondary)]/20 
+            transition-all duration-200 
+            flex items-center justify-center gap-2 
+            shadow-[0_0_10px_rgba(76,215,246,0.2)]
+            active:scale-[0.98]
+          "
+        >
+          <RefreshCw size={14} className="animate-spin-slow" />
+          SYNC CC
         </button>
 
         {/* Theme Selector */}
         <div className="relative">
           <button
             onClick={() => setThemeDropdownOpen(!themeDropdownOpen)}
-            className="w-full py-2 px-3 bg-[var(--color-surface-container)] border border-[var(--color-outline-variant)] text-[var(--color-on-surface)] rounded-lg font-body text-xs flex items-center justify-between hover:border-[var(--color-primary)] transition-colors"
+            className="w-full py-2 px-3 bg-[var(--color-surface-container)] border border-[var(--color-outline-variant)]/50 text-[var(--color-on-surface)] rounded-lg font-body text-xs flex items-center justify-between hover:border-[var(--color-primary)] transition-colors"
           >
             <span className="flex items-center gap-2">
-              <Palette size={14} />
+              <Palette size={12} />
               {themeInfo.name}
             </span>
-            <ChevronDown size={14} className={`transition-transform ${themeDropdownOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown size={12} className={`transition-transform ${themeDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
           
           <AnimatePresence>
@@ -158,14 +193,20 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           </AnimatePresence>
         </div>
 
-        {/* Footer Links */}
+        {/* Footer Links - Design spec style */}
         <div className="pt-3 border-t border-[var(--color-outline-variant)]/30 space-y-1">
-          <Link href="/support" className="flex items-center gap-2 text-[var(--color-on-surface-variant)] py-2 px-3 rounded-lg hover:bg-[var(--color-surface-variant)]/50 hover:text-[var(--color-on-surface)] transition-all duration-150 text-xs font-body">
-            <HelpCircle size={14} />
+          <Link 
+            href="/support" 
+            className="flex items-center gap-2 text-[var(--color-on-surface-variant)] py-2 px-3 rounded-lg hover:bg-[var(--color-surface-variant)]/50 hover:text-[var(--color-on-surface)] transition-all duration-150 text-xs font-body"
+          >
+            <HelpCircle size={12} />
             Support
           </Link>
-          <Link href="/docs" className="flex items-center gap-2 text-[var(--color-on-surface-variant)] py-2 px-3 rounded-lg hover:bg-[var(--color-surface-variant)]/50 hover:text-[var(--color-on-surface)] transition-all duration-150 text-xs font-body">
-            <FileText size={14} />
+          <Link 
+            href="/docs" 
+            className="flex items-center gap-2 text-[var(--color-on-surface-variant)] py-2 px-3 rounded-lg hover:bg-[var(--color-surface-variant)]/50 hover:text-[var(--color-on-surface)] transition-all duration-150 text-xs font-body"
+          >
+            <FileText size={12} />
             Documentation
           </Link>
         </div>
@@ -202,7 +243,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           <img
             src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=40&h=40&fit=crop&crop=face"
             alt="User avatar"
-            className="w-8 h-8 rounded-full border-2 border-[var(--color-primary)] object-cover"
+            className="w-8 h-8 rounded-full border-2 border-[var(--color-primary)] object-cover shadow-[0_0_8px_rgba(208,188,255,0.6)]"
           />
         </div>
       </header>

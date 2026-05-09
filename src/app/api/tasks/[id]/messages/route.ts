@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { v4 as uuidv4 } from 'uuid';
 import type { TaskMessage } from '@/types';
+
+const apiLogger = logger.child({ module: 'api/tasks/[id]/messages' });
 
 interface TaskMessageRow {
   id: string;
@@ -34,9 +37,10 @@ export async function GET(
     ).all(taskId) as TaskMessageRow[];
 
     const messages = rows.map(rowToMessage);
+    apiLogger.debug('Messages fetched', { taskId, count: messages.length });
     return NextResponse.json({ messages, total: messages.length });
   } catch (error) {
-    console.error('Error fetching messages:', error);
+    apiLogger.error('Error fetching messages', error, { taskId: (await params).id, operation: 'GET' });
     // Return empty messages instead of error to avoid breaking the UI
     return NextResponse.json({ messages: [], total: 0 });
   }
@@ -52,6 +56,7 @@ export async function POST(
     const { content, type = 'user' } = body;
 
     if (!content || content.trim().length === 0) {
+      apiLogger.warn('Empty content provided', { taskId, operation: 'POST' });
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
@@ -77,6 +82,7 @@ export async function POST(
       new Date(Date.now() + 1000).toISOString()
     );
 
+    apiLogger.info('Message created', { taskId, messageId: id, messageType: type });
     return NextResponse.json({ 
       id, 
       taskId, 
@@ -85,7 +91,7 @@ export async function POST(
       createdAt: now 
     });
   } catch (error) {
-    console.error('Error creating message:', error);
+    apiLogger.error('Error creating message', error, { taskId: (await params).id, operation: 'POST' });
     return NextResponse.json({ error: 'Failed to create message' }, { status: 500 });
   }
 }

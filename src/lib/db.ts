@@ -1,9 +1,15 @@
 import DatabaseLib from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { logger } from './logger';
 
-const DB_DIR = path.join(process.cwd(), 'data');
-const DB_PATH = path.join(DB_DIR, 'ShadowMe.db');
+// Database path from environment variable or default
+const DB_PATH_ENV = process.env.DATABASE_PATH || './data/ShadowMe.db';
+// Resolve to absolute path if relative
+const DB_PATH = path.isAbsolute(DB_PATH_ENV) 
+  ? DB_PATH_ENV 
+  : path.join(process.cwd(), DB_PATH_ENV);
+const DB_DIR = path.dirname(DB_PATH);
 
 type Database = InstanceType<typeof DatabaseLib>;
 let dbInstance: Database | null = null;
@@ -90,12 +96,13 @@ function seedData(db: Database) {
 export function initDatabase(): Database {
   if (!fs.existsSync(DB_DIR)) {
     fs.mkdirSync(DB_DIR, { recursive: true });
+    logger.info('Created database directory', { path: DB_DIR });
   }
 
   const db = new DatabaseLib(DB_PATH);
   createTables(db);
   seedData(db);
-  console.log('Database initialized successfully');
+  logger.info('Database initialized successfully', { path: DB_PATH });
   return db;
 }
 
@@ -115,10 +122,6 @@ export function closeDatabase(): void {
   if (dbInstance) {
     dbInstance.close();
     dbInstance = null;
+    logger.info('Database connection closed');
   }
-}
-
-if (require.main === module) {
-  const db = initDatabase();
-  db.close();
 }

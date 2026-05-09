@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import type { ShadowState, ShadowStatus } from '@/types';
+
+const apiLogger = logger.child({ module: 'api/shadow/status' });
 
 export async function GET() {
   try {
@@ -16,6 +19,7 @@ export async function GET() {
         capabilities: [],
         autoTakeTasks: false
       };
+      apiLogger.info('Returning default shadow status');
       return NextResponse.json(defaultShadow);
     }
 
@@ -53,9 +57,13 @@ export async function GET() {
       }
     }
 
+    apiLogger.info('Shadow status fetched', { 
+      status: shadow.status, 
+      currentTaskId: shadow.currentTaskId 
+    });
     return NextResponse.json(shadow);
   } catch (error) {
-    console.error('Error fetching shadow status:', error);
+    apiLogger.error('Error fetching shadow status', error, { operation: 'GET' });
     return NextResponse.json({ error: 'Failed to fetch shadow status' }, { status: 500 });
   }
 }
@@ -91,6 +99,10 @@ export async function POST(request: Request) {
 
     const row = db.prepare('SELECT * FROM shadow_status WHERE id = ?').get('shadow-1') as any;
 
+    apiLogger.info('Shadow status updated', { 
+      status: row.status,
+      autoTakeTasks: autoTakeTasks 
+    });
     return NextResponse.json({
       id: row.id,
       name: row.name,
@@ -100,7 +112,7 @@ export async function POST(request: Request) {
       lastHeartbeat: row.last_heartbeat
     });
   } catch (error) {
-    console.error('Error updating shadow status:', error);
+    apiLogger.error('Error updating shadow status', error, { operation: 'POST' });
     return NextResponse.json({ error: 'Failed to update shadow status' }, { status: 500 });
   }
 }

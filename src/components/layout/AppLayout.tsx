@@ -1,3 +1,8 @@
+/**
+ * AppLayout Component - Enhanced with Glass Panel Header
+ * Features: Glassmorphic top bar with blur effect
+ * Source: detail_log_1/code.html, create_task/code.html
+ */
 'use client';
 
 import React, { useState } from 'react';
@@ -8,6 +13,8 @@ import { usePathname } from 'next/navigation';
 
 interface AppLayoutProps {
   children: React.ReactNode;
+  showTopBar?: boolean;
+  topBarTitle?: string;
 }
 
 const mobileNavItems = [
@@ -17,14 +24,19 @@ const mobileNavItems = [
   { href: '/settings', icon: Settings, label: 'Settings' },
 ];
 
-export default function AppLayout({ children }: AppLayoutProps) {
+export default function AppLayout({ children, showTopBar = false, topBarTitle }: AppLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
   return (
     <div className="min-h-screen">
-      {/* Mobile Header */}
-      <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[var(--color-surface-container)] border-b border-[var(--color-outline-variant)]/30 z-40 flex items-center px-4">
+      {/* Mobile Header with Glass Effect */}
+      <header className="md:hidden fixed top-0 left-0 right-0 h-16 z-40 flex items-center px-4
+        bg-gradient-to-br from-[var(--color-surface-container-low)]/80 to-[var(--color-surface-container-low)]/90
+        backdrop-blur-xl
+        border-b border-[var(--color-outline-variant)]/10
+        shadow-sm
+      ">
         <button
           onClick={() => setMobileMenuOpen(true)}
           className="p-2 rounded-lg hover:bg-[var(--color-surface-variant)]/50 transition-colors text-[var(--color-on-surface)]"
@@ -33,7 +45,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <Menu size={24} />
         </button>
         <span className="ml-4 font-headline text-lg text-[var(--color-on-surface)]">
-          ShadowMe
+          {topBarTitle || 'ShadowMe'}
         </span>
       </header>
 
@@ -50,7 +62,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[var(--color-surface-container)] border-t border-[var(--color-outline-variant)]/30 z-40 flex items-center justify-around px-2">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 z-40 flex items-center justify-around px-2
+        bg-gradient-to-t from-[var(--color-surface-container-low)]/95 to-[var(--color-surface-container-low)]/80
+        backdrop-blur-xl
+        border-t border-[var(--color-outline-variant)]/20
+      ">
         {mobileNavItems.map((item) => {
           const isActive = pathname === item.href;
           return (

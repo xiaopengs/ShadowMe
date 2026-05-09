@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import type { Task, TaskStatus } from '@/types';
+
+const apiLogger = logger.child({ module: 'api/tasks' });
 
 function rowToTask(row: any): Task {
   return {
@@ -59,9 +62,10 @@ export async function GET(request: Request) {
 
     const rows = db.prepare(query).all(...params);
     const tasks = rows.map(rowToTask);
+    apiLogger.info('Tasks fetched', { count: tasks.length, filters: { status, type, priority } });
     return NextResponse.json({ tasks, total: tasks.length });
   } catch (error) {
-    console.error('Error fetching tasks:', error);
+    apiLogger.error('Error fetching tasks', error, { operation: 'GET' });
     return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 });
   }
 }
@@ -114,9 +118,10 @@ export async function POST(request: Request) {
     `).run(id, 'created', createdBy, JSON.stringify({ type, priority }), now);
 
     const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+    apiLogger.info('Task created', { taskId: id, title: title.trim() });
     return NextResponse.json(rowToTask(row), { status: 201 });
   } catch (error) {
-    console.error('Error creating task:', error);
+    apiLogger.error('Error creating task', error, { operation: 'POST' });
     return NextResponse.json({ error: 'Failed to create task' }, { status: 500 });
   }
 }

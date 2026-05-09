@@ -19,6 +19,7 @@ import {
 import AppLayout from '@/components/layout/AppLayout';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/ui/Toast';
+import { TaskListSkeleton } from '@/components/ui/Skeletons';
 import type { Task, TaskStatus, TaskType, Priority } from '@/types';
 import { STATUS_LABELS, TASK_TYPE_LABELS, PRIORITY_LABELS } from '@/types';
 
@@ -269,12 +270,7 @@ export default function TasksPage() {
           )}
 
           {/* Loading State */}
-          {isLoading && (
-            <div className="text-center py-16">
-              <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="font-body text-[var(--color-on-surface-variant)]">Loading tasks...</p>
-            </div>
-          )}
+          {isLoading && <TaskListSkeleton />}
         </div>
       </div>
     </AppLayout>

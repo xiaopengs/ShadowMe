@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
+import { logger } from '@/lib/logger';
 
-const GITLAB_URL = process.env.GITLAB_URL || 'https://gitlab.com';
-const GITLAB_TOKEN = process.env.GITLAB_TOKEN || '';
+const apiLogger = logger.child({ module: 'api/gitlab' });
 
 interface GitLabConfig {
   url: string;
@@ -14,7 +14,7 @@ function getConfig(): GitLabConfig {
   return {
     url: process.env.GITLAB_URL || 'https://gitlab.com',
     token: process.env.GITLAB_TOKEN || '',
-    projectId: process.env.GITLAB_DEFAULT_PROJECT || ''
+    projectId: process.env.GITLAB_PROJECT_ID || ''
   };
 }
 
@@ -25,6 +25,7 @@ export async function GET(request: Request) {
     const projectId = searchParams.get('project_id') || config.projectId;
 
     if (!config.token) {
+      apiLogger.warn('GitLab token not configured', { operation: 'GET' });
       return NextResponse.json({ error: 'GitLab token not configured' }, { status: 400 });
     }
 
@@ -35,9 +36,13 @@ export async function GET(request: Request) {
       }
     );
 
+    apiLogger.info('GitLab project fetched', { projectId });
     return NextResponse.json(response.data);
   } catch (error: any) {
-    console.error('GitLab API error:', error.response?.data || error.message);
+    apiLogger.error('GitLab API error', error, { 
+      operation: 'GET',
+      details: error.response?.data || error.message 
+    });
     return NextResponse.json(
       { error: 'Failed to fetch project', details: error.response?.data },
       { status: error.response?.status || 500 }
@@ -46,24 +51,29 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let actionValue: string | undefined;
+  
   try {
     const config = getConfig();
     const body = await request.json();
     const { action, project_id, ...params } = body;
+    actionValue = action as string;
 
     if (!config.token) {
+      apiLogger.warn('GitLab token not configured', { operation: 'POST' });
       return NextResponse.json({ error: 'GitLab token not configured' }, { status: 400 });
     }
 
     const projectId = project_id || config.projectId;
 
     if (!projectId) {
+      apiLogger.warn('Project ID required', { operation: 'POST' });
       return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
     }
 
     let result: any;
 
-    switch (action) {
+    switch (actionValue) {
       case 'create_mr':
         result = await createMergeRequest(config, projectId, params);
         break;
@@ -80,12 +90,18 @@ export async function POST(request: Request) {
         result = await getBranches(config, projectId);
         break;
       default:
+        apiLogger.warn('Invalid GitLab action', { action: actionValue, operation: 'POST' });
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
 
+    apiLogger.info('GitLab action completed', { action: actionValue, projectId });
     return NextResponse.json(result);
   } catch (error: any) {
-    console.error('GitLab API error:', error.response?.data || error.message);
+    apiLogger.error('GitLab API error', error, { 
+      operation: 'POST',
+      action: actionValue,
+      details: error.response?.data || error.message 
+    });
     return NextResponse.json(
       { error: 'GitLab API error', details: error.response?.data || error.message },
       { status: error.response?.status || 500 }
@@ -121,16 +137,12 @@ async function createMergeRequest(
 async function createBranch(
   config: GitLabConfig,
   projectId: string,
-  params: {
-    branch?: string;
-    ref?: string;
-  }
+  params: { branch?: string; ref?: string }
 ) {
-  const branchName = params.branch || `shadow-${Date.now()}`;
   const response = await axios.post(
     `${config.url}/api/v4/projects/${encodeURIComponent(projectId)}/repository/branches`,
     {
-      branch: branchName,
+      branch: params.branch || `shadow-${Date.now()}`,
       ref: params.ref || 'main',
     },
     {
@@ -145,20 +157,17 @@ async function commitFile(
   projectId: string,
   params: {
     branch?: string;
+    file_path?: string;
+    content?: string;
     commit_message?: string;
-    actions?: Array<{
-      action: 'create' | 'update' | 'delete';
-      file_path: string;
-      content?: string;
-    }>;
   }
 ) {
   const response = await axios.post(
-    `${config.url}/api/v4/projects/${encodeURIComponent(projectId)}/repository/commits`,
+    `${config.url}/api/v4/projects/${encodeURIComponent(projectId)}/repository/files/${encodeURIComponent(params.file_path || 'shadow.txt')}`,
     {
       branch: params.branch || 'main',
+      content: params.content || 'Created by ShadowMe',
       commit_message: params.commit_message || 'ShadowMe commit',
-      actions: params.actions || [],
     },
     {
       headers: { 'PRIVATE-TOKEN': config.token },
@@ -171,18 +180,18 @@ async function createFile(
   config: GitLabConfig,
   projectId: string,
   params: {
-    branch?: string;
     file_path?: string;
     content?: string;
-    commit_message?: string;
+    branch?: string;
   }
 ) {
+  const filePath = params.file_path || `shadow-${Date.now()}.txt`;
   const response = await axios.post(
-    `${config.url}/api/v4/projects/${encodeURIComponent(projectId)}/repository/files/${encodeURIComponent(params.file_path || 'README.md')}`,
+    `${config.url}/api/v4/projects/${encodeURIComponent(projectId)}/repository/files/${encodeURIComponent(filePath)}`,
     {
       branch: params.branch || 'main',
-      content: params.content || '',
-      commit_message: params.commit_message || 'Add file from ShadowMe',
+      content: params.content || 'Created by ShadowMe',
+      commit_message: 'Add file via ShadowMe',
     },
     {
       headers: { 'PRIVATE-TOKEN': config.token },
@@ -198,5 +207,5 @@ async function getBranches(config: GitLabConfig, projectId: string) {
       headers: { 'PRIVATE-TOKEN': config.token },
     }
   );
-  return { branches: response.data };
+  return response.data;
 }

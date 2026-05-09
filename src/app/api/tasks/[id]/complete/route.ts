@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import type { Task, TaskStatus } from '@/types';
+
+const apiLogger = logger.child({ module: 'api/tasks/[id]/complete' });
 
 function rowToTask(row: any): Task {
   return {
@@ -36,10 +39,12 @@ export async function POST(
 
     const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as any;
     if (!row) {
+      apiLogger.warn('Task not found for completion', { taskId: id, operation: 'POST' });
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
     if (row.status !== 'in_progress') {
+      apiLogger.warn('Task not in progress', { taskId: id, currentStatus: row.status });
       return NextResponse.json({ error: 'Task is not in progress' }, { status: 400 });
     }
 
@@ -69,9 +74,10 @@ export async function POST(
 
     const updated = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
 
+    apiLogger.info('Task completed', { taskId: id, resultType: resultData.type });
     return NextResponse.json(rowToTask(updated));
   } catch (error) {
-    console.error('Error completing task:', error);
+    apiLogger.error('Error completing task', error, { taskId: (await params).id, operation: 'POST' });
     return NextResponse.json({ error: 'Failed to complete task' }, { status: 500 });
   }
 }

@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import type { TaskStatus } from '@/types';
+
+const apiLogger = logger.child({ module: 'api/board/stats' });
 
 interface BoardStats {
   total: number;
@@ -55,9 +58,10 @@ export async function GET() {
       stats.avgCompletionTime = Math.round(totalCompletionTime / completedCount / (1000 * 60));
     }
 
+    apiLogger.info('Board stats fetched', { totalTasks: stats.total });
     return NextResponse.json(stats);
   } catch (error) {
-    console.error('Error fetching board stats:', error);
+    apiLogger.error('Error fetching board stats', error, { operation: 'GET' });
     return NextResponse.json({ error: 'Failed to fetch board stats' }, { status: 500 });
   }
 }

@@ -42,15 +42,27 @@ interface SettingsFormData {
   autoSyncChanges: boolean;
 }
 
+// Default settings from environment variables (exposed via NEXT_PUBLIC_ prefix for client-side access)
+const envDefaults = {
+  gitlabUrl: process.env.NEXT_PUBLIC_GITLAB_URL || 'https://gitlab.example.com',
+  gitlabToken: process.env.NEXT_PUBLIC_GITLAB_TOKEN || 'glpat-xxxxxxxxxxxx',
+  localEndpoint: process.env.NEXT_PUBLIC_LOCAL_ENDPOINT || 'http://localhost:8080/v1',
+  greetingProtocol: process.env.NEXT_PUBLIC_GREETING_PROTOCOL || 'concise',
+  responseVerbosity: parseInt(process.env.NEXT_PUBLIC_RESPONSE_VERBOSITY || '50', 10),
+  autoContextInjection: process.env.NEXT_PUBLIC_AUTO_CONTEXT_INJECTION !== 'false',
+  workingDirectory: process.env.NEXT_PUBLIC_WORKING_DIRECTORY || '/home/user/projects',
+  autoSyncChanges: process.env.NEXT_PUBLIC_AUTO_SYNC_CHANGES === 'true',
+};
+
 const defaultSettings: SettingsFormData = {
-  gitlabUrl: 'https://gitlab.example.com',
-  gitlabToken: 'glpat-xxxxxxxxxxxx',
-  localEndpoint: 'http://localhost:8080/v1',
-  greetingProtocol: 'concise',
-  responseVerbosity: 50,
-  autoContextInjection: true,
-  workingDirectory: '/home/user/projects',
-  autoSyncChanges: false,
+  gitlabUrl: envDefaults.gitlabUrl,
+  gitlabToken: envDefaults.gitlabToken,
+  localEndpoint: envDefaults.localEndpoint,
+  greetingProtocol: envDefaults.greetingProtocol,
+  responseVerbosity: envDefaults.responseVerbosity,
+  autoContextInjection: envDefaults.autoContextInjection,
+  workingDirectory: envDefaults.workingDirectory,
+  autoSyncChanges: envDefaults.autoSyncChanges,
 };
 
 export default function SettingsPage() {
