@@ -1,0 +1,26 @@
+{
+  "name": "shadow-clone-plugin",
+  "version": "1.0.0",
+  "description": "Shadow Clone - Claude Code integration plugin",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "dev": "node -e \"require('ts-node/register'); require('./src/index.ts')\"",
+    "link": "npm link"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "ws": "^8.18.0",
+    "uuid": "^11.0.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/uuid": "^10",
+    "@types/ws": "^8.5.13",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  }
+}
