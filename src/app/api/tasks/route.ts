@@ -36,8 +36,15 @@ export async function GET(request: Request) {
     const params: any[] = [];
 
     if (status) {
-      query += ' AND status = ?';
-      params.push(status);
+      // Support comma-separated status values (e.g., "completed,closed")
+      const statuses = status.split(',').map(s => s.trim());
+      if (statuses.length === 1) {
+        query += ' AND status = ?';
+        params.push(status);
+      } else {
+        query += ` AND status IN (${statuses.map(() => '?').join(', ')})`;
+        params.push(...statuses);
+      }
     }
     if (type) {
       query += ' AND type = ?';

@@ -1,80 +1,70 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   Search,
-  LibraryBooks,
   CheckCircle,
   ExternalLink,
-  Archive
+  Loader2,
+  AlertCircle,
+  Package,
+  ChevronRight
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
-
-interface ArchivedTask {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  completedDate: string;
-  creator: string;
-  sourceUrl?: string;
-  isHighlighted?: boolean;
-}
-
-const archivedTasks: ArchivedTask[] = [
-  {
-    id: 'task-arch-001',
-    title: 'Neural Sync Protocol Refactor',
-    description: 'Complete overhaul of the bi-directional syncing mechanism between local context and remote GitLab repositories, reducing latency by 40%.',
-    category: 'Architecture',
-    completedDate: 'Oct 12, 2023',
-    creator: 'E. Thorne',
-    sourceUrl: '#',
-    isHighlighted: true,
-  },
-  {
-    id: 'task-arch-002',
-    title: 'Context Window Optimization',
-    description: 'Improved context compression algorithms for handling larger codebases.',
-    category: 'Performance',
-    completedDate: 'Sep 28, 2023',
-    creator: 'M. Chen',
-  },
-  {
-    id: 'task-arch-003',
-    title: 'Auto-Rollback机制实现',
-    description: 'Implemented automatic rollback for failed deployments.',
-    category: 'DevOps',
-    completedDate: 'Sep 15, 2023',
-    creator: 'K. Wang',
-  },
-  {
-    id: 'task-arch-004',
-    title: 'GitLab Integration v2',
-    description: 'Enhanced MR creation and review workflow integration.',
-    category: 'Integration',
-    completedDate: 'Aug 30, 2023',
-    creator: 'L. Zhang',
-  },
-];
+import type { Task } from '@/types';
 
 export default function ArchivePage() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [archivedTasks, setArchivedTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchArchivedTasks = async () => {
+      try {
+        setIsLoading(true);
+        const res = await fetch('/api/tasks?status=completed,closed');
+        if (!res.ok) throw new Error('Failed to fetch archived tasks');
+        const data = await res.json();
+        setArchivedTasks(data.tasks || []);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching archived tasks:', err);
+        setError('Failed to load archived tasks');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchArchivedTasks();
+  }, []);
 
   const filteredTasks = archivedTasks.filter(task =>
     task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     task.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    task.category.toLowerCase().includes(searchQuery.toLowerCase())
+    task.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const highlightedTask = filteredTasks.find(t => t.isHighlighted);
-  const otherTasks = filteredTasks.filter(t => !t.isHighlighted);
+  const highlightedTask = filteredTasks[0];
+  const otherTasks = filteredTasks.slice(1);
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
   return (
     <AppLayout>
       <div className="max-w-6xl mx-auto">
+        {/* Breadcrumb Navigation */}
+        <nav className="flex items-center gap-2 text-sm text-[var(--color-on-surface-variant)] mb-6">
+          <Link href="/" className="hover:text-[var(--color-primary)] transition-colors">Dashboard</Link>
+          <ChevronRight size={14} />
+          <span className="text-[var(--color-on-surface)]">Archive</span>
+        </nav>
+
         {/* Page Header */}
         <header className="mb-12">
           <h1 className="font-headline text-4xl md:text-5xl text-[var(--color-on-background)] mb-4">
@@ -99,122 +89,126 @@ export default function ArchivePage() {
           </div>
         </div>
 
-        {/* Archive Bento Grid Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* Highlighted Recent Archive */}
-          {highlightedTask && (
-            <motion.article
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="col-span-1 md:col-span-8 bg-[var(--color-surface-container-low)] rounded-2xl p-8 border border-[var(--color-outline-variant)]/40 shadow-[var(--shadow-card)] hover:border-[var(--color-primary)]/30 transition-colors group"
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 size={32} className="animate-spin text-[var(--color-primary)]" />
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !isLoading && (
+          <div className="flex flex-col items-center justify-center h-64 gap-4">
+            <AlertCircle size={48} className="text-[var(--color-error)]" />
+            <p className="text-[var(--color-on-surface)] font-body">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-[var(--color-primary)] text-[var(--color-on-primary)] rounded-lg font-body text-sm"
             >
-              <div className="flex justify-between items-start mb-6">
-                <span className="bg-[var(--color-surface-variant)] text-[var(--color-on-surface-variant)] text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full font-label">
-                  {highlightedTask.category}
-                </span>
-                <span className="text-[var(--color-tertiary)] font-body text-sm flex items-center gap-1">
-                  <CheckCircle size={14} />
-                  Completed {highlightedTask.completedDate}
-                </span>
-              </div>
-
-              <h3 className="font-headline text-2xl md:text-3xl text-[var(--color-on-surface)] mb-3 group-hover:text-[var(--color-primary)] transition-colors">
-                {highlightedTask.title}
-              </h3>
-              <p className="font-body text-[var(--color-on-surface-variant)] mb-6 line-clamp-2">
-                {highlightedTask.description}
-              </p>
-
-              <div className="flex items-center justify-between pt-6 border-t border-[var(--color-outline-variant)]/30">
-                <div className="flex items-center gap-3">
-                  <img
-                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face"
-                    alt={highlightedTask.creator}
-                    className="w-8 h-8 rounded-full border border-[var(--color-outline-variant)]"
-                  />
-                  <span className="font-body text-sm text-[var(--color-on-surface)] font-medium">
-                    Original Creator: {highlightedTask.creator}
-                  </span>
-                </div>
-                {highlightedTask.sourceUrl && (
-                  <a
-                    href={highlightedTask.sourceUrl}
-                    className="flex items-center gap-2 text-[var(--color-primary)] font-body text-sm hover:underline underline-offset-4 decoration-[var(--color-primary)]/50"
-                  >
-                    <span>GitLab Source</span>
-                    <ExternalLink size={14} />
-                  </a>
-                )}
-              </div>
-            </motion.article>
-          )}
-
-          {/* Metrics/Stats Card */}
-          <motion.aside
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-            className="col-span-1 md:col-span-4 bg-[var(--color-surface-container)] rounded-2xl p-8 border border-[var(--color-outline-variant)]/40 shadow-[var(--shadow-card)] flex flex-col justify-center"
-          >
-            <div className="text-center">
-              <LibraryBooks size={40} className="text-[var(--color-primary)] mx-auto mb-4" />
-              <div className="font-headline text-6xl text-[var(--color-on-surface)] mb-2">
-                {archivedTasks.length + 138}
-              </div>
-              <p className="font-body text-[var(--color-on-surface-variant)] text-sm uppercase tracking-wider font-bold">
-                Total Archived Tasks
-              </p>
-            </div>
-          </motion.aside>
-
-          {/* Other Archived Tasks */}
-          {otherTasks.map((task, index) => (
-            <motion.article
-              key={task.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + index * 0.05 }}
-              className="col-span-1 md:col-span-4 bg-[var(--color-surface-container-low)] rounded-xl p-6 border border-[var(--color-outline-variant)]/30 shadow-[var(--shadow-card)] hover:border-[var(--color-primary)]/20 transition-all group"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <span className="bg-[var(--color-surface-variant)]/50 text-[var(--color-on-surface-variant)] text-[10px] font-semibold uppercase tracking-wider py-1 px-2 rounded font-label">
-                  {task.category}
-                </span>
-                <span className="text-[var(--color-outline)] text-xs">
-                  {task.completedDate}
-                </span>
-              </div>
-
-              <h3 className="font-headline text-lg text-[var(--color-on-surface)] mb-2 group-hover:text-[var(--color-primary)] transition-colors">
-                {task.title}
-              </h3>
-              <p className="font-body text-sm text-[var(--color-on-surface-variant)] line-clamp-2 mb-4">
-                {task.description}
-              </p>
-
-              <div className="flex items-center justify-between pt-3 border-t border-[var(--color-outline-variant)]/20">
-                <span className="text-xs text-[var(--color-outline)]">
-                  by {task.creator}
-                </span>
-                <button className="text-[var(--color-primary)] text-xs hover:underline flex items-center gap-1">
-                  <Archive size={12} />
-                  View
-                </button>
-              </div>
-            </motion.article>
-          ))}
-        </div>
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* Empty State */}
-        {filteredTasks.length === 0 && (
-          <div className="text-center py-16">
-            <Archive size={48} className="text-[var(--color-outline)] mx-auto mb-4" />
-            <h3 className="font-headline text-xl text-[var(--color-on-surface)] mb-2">
-              No archived tasks found
-            </h3>
-            <p className="font-body text-[var(--color-on-surface-variant)]">
-              Try adjusting your search query
+        {!isLoading && !error && filteredTasks.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-64 gap-4">
+            <Package size={48} className="text-[var(--color-outline)]" />
+            <p className="text-[var(--color-on-surface-variant)] font-body text-center">
+              {searchQuery 
+                ? 'No archived tasks match your search.'
+                : 'No archived tasks yet. Completed tasks will appear here.'
+              }
             </p>
+          </div>
+        )}
+
+        {/* Highlighted Task */}
+        {!isLoading && !error && highlightedTask && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <Link href={`/tasks/${highlightedTask.id}`}>
+              <div className="bg-gradient-to-br from-[var(--color-surface-container)] to-[var(--color-surface-container-low)] rounded-2xl p-6 border border-[var(--color-primary)]/20 shadow-[0_0_30px_rgba(208,188,255,0.15)] hover:shadow-[0_0_40px_rgba(208,188,255,0.25)] transition-all group cursor-pointer">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center">
+                      <CheckCircle size={20} className="text-[var(--color-primary)]" />
+                    </div>
+                    <div>
+                      <span className="code-label text-[var(--color-primary)] mb-1 block">
+                        {highlightedTask.id.slice(0, 10).toUpperCase()}
+                      </span>
+                      <h3 className="font-headline text-xl text-[var(--color-on-surface)] group-hover:text-[var(--color-primary)] transition-colors">
+                        {highlightedTask.title}
+                      </h3>
+                    </div>
+                  </div>
+                  <ExternalLink size={20} className="text-[var(--color-outline)] group-hover:text-[var(--color-primary)] transition-colors" />
+                </div>
+
+                <p className="font-body text-[var(--color-on-surface-variant)] mb-4 line-clamp-2">
+                  {highlightedTask.description || 'No description provided.'}
+                </p>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4 text-sm text-[var(--color-outline)]">
+                    <span className="font-mono">{highlightedTask.createdBy}</span>
+                    <span>•</span>
+                    <span>{formatDate(highlightedTask.completedAt || highlightedTask.updatedAt)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-1 bg-[var(--color-secondary)]/10 text-[var(--color-secondary)] rounded text-xs font-mono">
+                      {highlightedTask.status === 'completed' ? 'COMPLETED' : 'CLOSED'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          </motion.div>
+        )}
+
+        {/* Other Tasks Grid */}
+        {!isLoading && !error && otherTasks.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {otherTasks.map((task, index) => (
+              <motion.div
+                key={task.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <Link href={`/tasks/${task.id}`}>
+                  <div className="bg-[var(--color-surface-container-low)] rounded-xl p-5 border border-[var(--color-outline-variant)]/20 hover:border-[var(--color-outline-variant)]/50 transition-all group cursor-pointer h-full">
+                    <div className="flex items-start justify-between mb-3">
+                      <span className="code-label text-[var(--color-secondary)]">
+                        {task.id.slice(0, 10).toUpperCase()}
+                      </span>
+                      <ExternalLink size={16} className="text-[var(--color-outline)] group-hover:text-[var(--color-primary)] transition-colors" />
+                    </div>
+
+                    <h3 className="font-body text-sm font-semibold text-[var(--color-on-surface)] mb-2 group-hover:text-[var(--color-primary)] transition-colors line-clamp-2">
+                      {task.title}
+                    </h3>
+
+                    <p className="font-body text-xs text-[var(--color-on-surface-variant)] mb-4 line-clamp-2">
+                      {task.description || 'No description.'}
+                    </p>
+
+                    <div className="flex items-center justify-between mt-auto">
+                      <span className="text-xs text-[var(--color-outline)]">
+                        {formatDate(task.completedAt || task.updatedAt)}
+                      </span>
+                      <span className="px-2 py-0.5 bg-[var(--color-surface-variant)] text-[var(--color-on-surface-variant)] rounded text-[10px]">
+                        {task.status === 'completed' ? 'Done' : 'Closed'}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
           </div>
         )}
       </div>

@@ -59,12 +59,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [theme, mounted]);
 
-  useEffect(() => {
-    if (mounted) {
-      document.documentElement.setAttribute('data-theme', theme);
-    }
-  }, [theme, mounted]);
-
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
   };

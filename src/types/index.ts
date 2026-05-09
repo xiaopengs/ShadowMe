@@ -110,3 +110,18 @@ export const STATUS_LABELS: Record<TaskStatus, string> = {
 };
 
 export const COLUMN_ORDER: TaskStatus[] = ['pending', 'in_progress', 'completed', 'closed'];
+
+export interface SyncMessage {
+  id: string;
+  type: 'user' | 'system' | 'claude';
+  content: string;
+  timestamp: string;
+}
+
+export interface TaskMessage {
+  id: string;
+  taskId: string;
+  type: 'user' | 'system' | 'claude';
+  content: string;
+  createdAt: string;
+}

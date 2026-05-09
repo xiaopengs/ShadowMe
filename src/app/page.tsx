@@ -2,29 +2,62 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
   MoreHorizontal,
   CheckCircle,
-  Sync,
-  Clock,
-  Merge,
-  Settings,
-  Wifi
+  RefreshCw,
+  Loader2,
+  FolderCode,
+  Code,
+  FileText,
+  Archive,
+  Inbox
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useApp } from '@/context/AppContext';
-import type { Task, TaskStatus } from '@/types';
+import type { Task, TaskStatus, TaskType } from '@/types';
 
 interface TaskCardProps {
   task: Task;
   variant?: 'default' | 'active' | 'completed';
 }
 
+const typeConfig: Record<TaskType, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
+  technical_issue: { 
+    label: '技术问题', 
+    icon: Code, 
+    color: 'text-[var(--color-error)]',
+    bgColor: 'bg-[var(--color-error)]/10'
+  },
+  design_doc: { 
+    label: '方案设计', 
+    icon: FileText, 
+    color: 'text-[var(--color-primary)]',
+    bgColor: 'bg-[var(--color-primary)]/10'
+  },
+  code_review: { 
+    label: '代码审查', 
+    icon: FolderCode, 
+    color: 'text-[var(--color-secondary)]',
+    bgColor: 'bg-[var(--color-secondary)]/10'
+  },
+  other: { 
+    label: '其他', 
+    icon: Archive, 
+    color: 'text-[var(--color-outline)]',
+    bgColor: 'bg-[var(--color-outline)]/10'
+  },
+};
+
 function TaskCardComponent({ task, variant = 'default' }: TaskCardProps) {
+  const router = useRouter();
   const isActive = variant === 'active';
   const isCompleted = variant === 'completed';
+  const typeInfo = typeConfig[task.type] || typeConfig.other;
+  const TypeIcon = typeInfo.icon;
 
   const formatTimeAgo = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -37,13 +70,8 @@ function TaskCardComponent({ task, variant = 'default' }: TaskCardProps) {
     return `${Math.floor(diff / 86400)}D AGO`;
   };
 
-  const getPriorityClass = (priority: string) => {
-    switch (priority) {
-      case 'urgent': return 'priority-urgent';
-      case 'high': return 'priority-high';
-      case 'medium': return 'priority-medium';
-      default: return 'priority-low';
-    }
+  const handleCardClick = () => {
+    router.push(`/tasks/${task.id}`);
   };
 
   return (
@@ -52,8 +80,9 @@ function TaskCardComponent({ task, variant = 'default' }: TaskCardProps) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       whileHover={{ y: -4 }}
+      onClick={handleCardClick}
       className={`
-        bg-[var(--color-surface-container-high)] rounded-lg p-4 border transition-all cursor-grab
+        bg-[var(--color-surface-container-high)] rounded-lg p-4 border transition-all cursor-pointer
         ${isActive 
           ? 'border-[var(--color-primary)]/50 shadow-energy-glow relative' 
           : isCompleted 
@@ -79,12 +108,21 @@ function TaskCardComponent({ task, variant = 'default' }: TaskCardProps) {
                 : 'bg-[var(--color-primary-container)]/10 text-[var(--color-primary-container)]'
             }
           `}>
-            {isActive && <Sync size={12} className="animate-spin" />}
+            {isActive && <RefreshCw size={12} className="animate-spin" />}
             {task.id.slice(0, 10).toUpperCase()}
           </span>
-          <button className="text-[var(--color-outline)] hover:text-[var(--color-on-surface)] transition-colors">
+          <button 
+            onClick={(e) => e.stopPropagation()}
+            className="text-[var(--color-outline)] hover:text-[var(--color-on-surface)] transition-colors"
+          >
             <MoreHorizontal size={18} />
           </button>
+        </div>
+
+        {/* Type Badge */}
+        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] ${typeInfo.bgColor} ${typeInfo.color} mb-2`}>
+          <TypeIcon size={10} />
+          {typeInfo.label}
         </div>
 
         {/* Description */}
@@ -120,10 +158,11 @@ function TaskCardComponent({ task, variant = 'default' }: TaskCardProps) {
           {isCompleted ? (
             <div className="flex items-center gap-1 text-[var(--color-secondary)] text-[11px] font-mono">
               <CheckCircle size={14} />
-              Merged
+              Done
             </div>
           ) : isActive ? (
-            <span className="text-[var(--color-secondary)] text-[11px] font-mono animate-pulse">
+            <span className="text-[var(--color-secondary)] text-[11px] font-mono animate-pulse flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-secondary)] animate-pulse" />
               ACTIVE
             </span>
           ) : (
@@ -219,73 +258,16 @@ export default function DashboardPage() {
     loadData();
   }, [fetchTasks]);
 
-  // Filter tasks by status
+  // Filter tasks by status from real data
   const pendingTasks = state.tasks.filter(t => t.status === 'pending');
   const inProgressTasks = state.tasks.filter(t => t.status === 'in_progress');
   const completedTasks = state.tasks.filter(t => t.status === 'completed' || t.status === 'closed');
 
-  // Sample data for demo if no tasks
-  const demoTasks: Task[] = [
-    {
-      id: 'task-402',
-      title: 'Refactor Authentication Middleware for better error handling',
-      type: 'technical_issue',
-      priority: 'high',
-      status: 'pending',
-      description: 'Need to improve error handling in auth middleware',
-      tags: ['auth', 'middleware', 'refactor'],
-      attachments: [],
-      createdBy: 'Alex J.',
-      createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: 'task-403',
-      title: 'Update API documentation for v2 endpoints',
-      type: 'design_doc',
-      priority: 'medium',
-      status: 'pending',
-      description: 'Document all new v2 API endpoints',
-      tags: ['docs', 'api'],
-      attachments: [],
-      createdBy: 'Sarah M.',
-      createdAt: new Date(Date.now() - 4 * 3600000).toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: 'task-398',
-      title: 'Implement dark mode theme configuration parser for new UI framework',
-      type: 'code_review',
-      priority: 'high',
-      status: 'in_progress',
-      description: 'Parse tailwind config and build CSS variables',
-      tags: ['ui', 'theming', 'css'],
-      attachments: [],
-      createdBy: 'John D.',
-      createdAt: new Date(Date.now() - 1 * 3600000).toISOString(),
-      updatedAt: new Date().toISOString(),
-      startedAt: new Date(Date.now() - 30 * 60000).toISOString(),
-    },
-    {
-      id: 'task-395',
-      title: 'Update dependencies and resolve npm audit vulnerabilities',
-      type: 'technical_issue',
-      priority: 'medium',
-      status: 'completed',
-      description: 'Update all npm packages and fix security issues',
-      tags: ['dependencies', 'security'],
-      attachments: [],
-      createdBy: 'Mike R.',
-      createdAt: new Date(Date.now() - 24 * 3600000).toISOString(),
-      updatedAt: new Date().toISOString(),
-      completedAt: new Date(Date.now() - 12 * 3600000).toISOString(),
-    },
-  ];
-
-  const displayTasks = state.tasks.length > 0 ? state.tasks : demoTasks;
-  const displayPending = state.tasks.length > 0 ? pendingTasks : demoTasks.filter(t => t.status === 'pending');
-  const displayInProgress = state.tasks.length > 0 ? inProgressTasks : demoTasks.filter(t => t.status === 'in_progress');
-  const displayCompleted = state.tasks.length > 0 ? completedTasks : demoTasks.filter(t => t.status === 'completed');
+  // Use real tasks if available, otherwise empty (don't show demo data)
+  const hasRealTasks = state.tasks.length > 0;
+  const displayPending = pendingTasks;
+  const displayInProgress = inProgressTasks;
+  const displayCompleted = completedTasks;
 
   return (
     <AppLayout>
@@ -314,7 +296,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex flex-col">
                 <span className="code-label text-[var(--color-on-surface)]">Shadow.OS</span>
-                <span className="status-mono text-[var(--color-secondary)] uppercase">Ready & Waiting</span>
+                <span className="status-mono text-[var(--color-secondary)] uppercase">{state.shadow.status === 'online' ? 'Ready & Waiting' : 'Offline'}</span>
               </div>
             </div>
 
@@ -329,35 +311,72 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 size={32} className="animate-spin text-[var(--color-primary)]" />
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!isLoading && !hasRealTasks && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-20 gap-6"
+          >
+            <div className="w-24 h-24 rounded-full bg-[var(--color-surface-container)] flex items-center justify-center shadow-[0_0_40px_rgba(208,188,255,0.1)]">
+              <Inbox size={48} className="text-[var(--color-outline)]" />
+            </div>
+            <div className="text-center">
+              <h3 className="font-headline text-2xl text-[var(--color-on-surface)] mb-2">
+                还没有任务
+              </h3>
+              <p className="font-body text-[var(--color-on-surface-variant)] max-w-md">
+                点击 Quick Create 或前往 New Task Portal 创建第一个协作任务
+              </p>
+            </div>
+            <Link
+              href="/tasks/new"
+              className="btn-primary mt-2"
+            >
+              <Plus size={18} />
+              创建第一个任务
+            </Link>
+          </motion.div>
+        )}
+
         {/* Kanban Board */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 h-[calc(100vh-220px)] min-h-[500px]">
-          {/* Pending Column */}
-          <KanbanColumn
-            title="待处理"
-            status="pending"
-            tasks={displayPending}
-            variant="default"
-            count={displayPending.length}
-          />
+        {!isLoading && hasRealTasks && (
+          <div className="grid grid-cols-1 md:grid-cols-[minmax(280px,1fr)_minmax(280px,1fr)_minmax(280px,1fr)] gap-4 md:gap-6 h-[calc(100vh-220px)] min-h-[500px]">
+            {/* Pending Column */}
+            <KanbanColumn
+              title="待处理"
+              status="pending"
+              tasks={displayPending}
+              variant="default"
+              count={displayPending.length}
+            />
 
-          {/* In Progress Column */}
-          <KanbanColumn
-            title="分身处理中"
-            status="in_progress"
-            tasks={displayInProgress}
-            variant="active"
-            count={displayInProgress.length}
-          />
+            {/* In Progress Column */}
+            <KanbanColumn
+              title="分身处理中"
+              status="in_progress"
+              tasks={displayInProgress}
+              variant="active"
+              count={displayInProgress.length}
+            />
 
-          {/* Completed Column */}
-          <KanbanColumn
-            title="已完成"
-            status="completed"
-            tasks={displayCompleted}
-            variant="completed"
-            count={displayCompleted.length}
-          />
-        </div>
+            {/* Completed Column */}
+            <KanbanColumn
+              title="已完成"
+              status="completed"
+              tasks={displayCompleted}
+              variant="completed"
+              count={displayCompleted.length}
+            />
+          </div>
+        )}
       </div>
     </AppLayout>
   );

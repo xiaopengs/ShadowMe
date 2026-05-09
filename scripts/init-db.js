@@ -1,14 +1,16 @@
-import DatabaseLib from 'better-sqlite3';
+/**
+ * Database initialization script
+ * Run with: npm run db:init
+ */
+
 import path from 'path';
 import fs from 'fs';
+import Database from 'better-sqlite3';
 
 const DB_DIR = path.join(process.cwd(), 'data');
 const DB_PATH = path.join(DB_DIR, 'ShadowMe.db');
 
-type Database = InstanceType<typeof DatabaseLib>;
-let dbInstance: Database | null = null;
-
-function createTables(db: Database) {
+function createTables(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS tasks (
       id TEXT PRIMARY KEY,
@@ -70,7 +72,8 @@ function createTables(db: Database) {
   `);
 }
 
-function seedData(db: Database) {
+function seedData(db) {
+  // Insert default shadow status if not exists
   const existingShadow = db.prepare('SELECT * FROM shadow_status WHERE id = ?').get('shadow-1');
   if (!existingShadow) {
     db.prepare(`
@@ -85,40 +88,81 @@ function seedData(db: Database) {
       new Date().toISOString()
     );
   }
+
+  // Insert sample tasks if none exist
+  const taskCount = db.prepare('SELECT COUNT(*) as count FROM tasks').get();
+  if (taskCount.count === 0) {
+    const sampleTasks = [
+      {
+        id: 'task-' + Date.now(),
+        title: 'Refactor Authentication Middleware',
+        type: 'technical_issue',
+        priority: 'high',
+        status: 'pending',
+        description: 'Need to improve error handling in auth middleware for better security.',
+        tags: JSON.stringify(['auth', 'middleware', 'security']),
+        createdBy: 'Alex J.'
+      },
+      {
+        id: 'task-' + (Date.now() + 1),
+        title: 'Update API documentation for v2 endpoints',
+        type: 'design_doc',
+        priority: 'medium',
+        status: 'in_progress',
+        description: 'Document all new v2 API endpoints with examples.',
+        tags: JSON.stringify(['docs', 'api']),
+        createdBy: 'Sarah M.'
+      },
+      {
+        id: 'task-' + (Date.now() + 2),
+        title: 'Implement dark mode theme configuration parser',
+        type: 'code_review',
+        priority: 'high',
+        status: 'completed',
+        description: 'Parse tailwind config and build CSS variables for theming.',
+        tags: JSON.stringify(['ui', 'theming', 'css']),
+        createdBy: 'John D.'
+      }
+    ];
+
+    const now = new Date().toISOString();
+    const insertStmt = db.prepare(`
+      INSERT INTO tasks (id, title, type, priority, status, description, tags, created_by, created_at, updated_at, started_at, completed_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const task of sampleTasks) {
+      insertStmt.run(
+        task.id,
+        task.title,
+        task.type,
+        task.priority,
+        task.status,
+        task.description,
+        task.tags,
+        task.createdBy,
+        now,
+        now,
+        task.status === 'in_progress' ? now : null,
+        task.status === 'completed' ? now : null
+      );
+    }
+    console.log(`Inserted ${sampleTasks.length} sample tasks`);
+  }
 }
 
-export function initDatabase(): Database {
+function initDatabase() {
   if (!fs.existsSync(DB_DIR)) {
     fs.mkdirSync(DB_DIR, { recursive: true });
+    console.log('Created data directory:', DB_DIR);
   }
 
-  const db = new DatabaseLib(DB_PATH);
+  const db = new Database(DB_PATH);
   createTables(db);
   seedData(db);
-  console.log('Database initialized successfully');
-  return db;
-}
-
-export function getDatabase(): Database {
-  if (dbInstance) return dbInstance;
-
-  if (!fs.existsSync(DB_PATH)) {
-    dbInstance = initDatabase();
-  } else {
-    dbInstance = new DatabaseLib(DB_PATH);
-  }
-
-  return dbInstance;
-}
-
-export function closeDatabase(): void {
-  if (dbInstance) {
-    dbInstance.close();
-    dbInstance = null;
-  }
-}
-
-if (require.main === module) {
-  const db = initDatabase();
+  console.log('Database initialized successfully at:', DB_PATH);
   db.close();
 }
+
+// Run if executed directly
+initDatabase();

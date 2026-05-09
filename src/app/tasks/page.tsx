@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useApp } from '@/context/AppContext';
+import { useToast } from '@/components/ui/Toast';
 import type { Task, TaskStatus, TaskType, Priority } from '@/types';
 import { STATUS_LABELS, TASK_TYPE_LABELS, PRIORITY_LABELS } from '@/types';
 
@@ -38,6 +39,7 @@ const statusIcons: Record<TaskStatus, React.ElementType> = {
 
 export default function TasksPage() {
   const { state, fetchTasks, deleteTask, updateTask } = useApp();
+  const { showToast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<TaskType | 'all'>('all');
   const [filterPriority, setFilterPriority] = useState<Priority | 'all'>('all');
@@ -224,7 +226,12 @@ export default function TasksPage() {
                             <Edit2 size={16} />
                           </Link>
                           <button
-                            onClick={() => deleteTask(task.id)}
+                            onClick={() => {
+                              if (window.confirm(`Delete task "${task.title}"?`)) {
+                                deleteTask(task.id);
+                                showToast('Task deleted', 'success');
+                              }
+                            }}
                             className="p-2 text-[var(--color-on-surface-variant)] hover:text-[var(--color-error)] transition-colors"
                           >
                             <Trash2 size={16} />

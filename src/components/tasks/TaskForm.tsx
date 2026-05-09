@@ -1,8 +1,9 @@
+// UI-POLISH: 修复为左右布局，添加右侧系统状态面板，优化Priority选择按钮组样式
 'use client';
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Code, FileText, MessageSquare, MoreHorizontal } from 'lucide-react';
+import { X, Plus, Code, FileText, MessageSquare, MoreHorizontal, CloudUpload, ArrowRight, Server, Clock, Users, Activity } from 'lucide-react';
 import type { TaskType, Priority, TaskFormData } from '@/types';
 import { TASK_TYPE_LABELS, PRIORITY_LABELS } from '@/types';
 import { useApp } from '@/context/AppContext';
@@ -118,223 +119,234 @@ export default function TaskForm({ isOpen, onClose, editTask }: TaskFormProps) {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[90vh] overflow-y-auto glass-heavy z-50 rounded-2xl"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl max-h-[90vh] overflow-hidden glass-heavy z-50 rounded-2xl"
           >
-            <div className="sticky top-0 bg-[var(--color-bg-elevated)]/90 backdrop-blur-lg border-b border-white/5 px-6 py-4 flex items-center justify-between rounded-t-2xl">
-              <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
-                {editTask ? '编辑任务' : '创建新任务'}
-              </h2>
+            {/* Header */}
+            <div className="sticky top-0 bg-[var(--color-surface-container-low)]/90 backdrop-blur-lg border-b border-[var(--color-outline-variant)]/30 px-6 py-4 flex items-center justify-between z-10">
+              <div>
+                <h2 className="font-headline text-xl text-[var(--color-on-surface)]">
+                  New Task Portal
+                </h2>
+                <p className="font-body text-xs text-[var(--color-on-surface-variant)] mt-0.5">
+                  Submit technical requests to your local Shadow Clone for automated processing.
+                </p>
+              </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                className="p-2 rounded-lg hover:bg-[var(--color-surface-variant)] transition-colors"
               >
-                <X size={20} className="text-[var(--color-text-secondary)]" />
+                <X size={20} className="text-[var(--color-on-surface-variant)]" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                  任务标题 <span className="text-[var(--color-error)]">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="简要描述任务内容..."
-                  className="w-full px-4 py-3 rounded-xl bg-[var(--color-bg-surface)] border border-white/10 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary-500)] focus:ring-2 focus:ring-[var(--color-primary-500)]/20 transition-all"
-                  maxLength={50}
-                  required
-                />
-                <div className="mt-1 text-xs text-[var(--color-text-muted)] text-right">
-                  {formData.title.length}/50
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+            {/* Main Content - 左右布局 */}
+            <div className="flex max-h-[calc(90vh-80px)]">
+              {/* 左侧表单区域 */}
+              <form onSubmit={handleSubmit} className="flex-1 p-6 space-y-5 overflow-y-auto">
+                {/* Task Title */}
                 <div>
-                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                    任务类型
+                  <label className="block text-sm font-medium text-[var(--color-on-surface)] mb-2 font-body">
+                    Task Title
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {typeOptions.map((opt) => {
-                      const Icon = opt.icon;
-                      const isSelected = formData.type === opt.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setFormData({ ...formData, type: opt.value })}
-                          className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${
-                            isSelected
-                              ? 'border-[var(--color-primary-500)] bg-[var(--color-primary-500)]/10'
-                              : 'border-white/10 hover:border-white/20 bg-[var(--color-bg-surface)]'
-                          }`}
-                        >
-                          <Icon size={16} className={isSelected ? 'text-[var(--color-primary-400)]' : 'text-[var(--color-text-muted)]'} />
-                          <span className={`text-sm ${isSelected ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-secondary)]'}`}>
-                            {opt.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="e.g. Refactor Auth Module"
+                    className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-container-low)] border border-[var(--color-outline-variant)]/30 text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]/30 transition-all font-body text-sm"
+                    maxLength={50}
+                    required
+                  />
                 </div>
 
+                {/* Problem Description */}
                 <div>
-                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                    优先级
+                  <label className="block text-sm font-medium text-[var(--color-on-surface)] mb-2 font-body">
+                    Problem Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Detail the issue, context, and desired outcome..."
+                    rows={4}
+                    className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-container-low)] border border-[var(--color-outline-variant)]/30 text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)]/30 transition-all resize-none font-body text-sm"
+                    required
+                  />
+                </div>
+
+                {/* Priority Level - 三选一按钮组 */}
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-on-surface)] mb-2 font-body">
+                    Priority Level
                   </label>
                   <div className="flex gap-2">
-                    {priorityOptions.map((opt) => {
+                    {[
+                      { value: 'low', label: 'Low' },
+                      { value: 'medium', label: 'Standard' },
+                      { value: 'urgent', label: 'Critical' }
+                    ].map((opt) => {
                       const isSelected = formData.priority === opt.value;
                       return (
                         <button
                           key={opt.value}
                           type="button"
-                          onClick={() => setFormData({ ...formData, priority: opt.value })}
-                          className={`flex-1 py-2 rounded-lg border transition-all flex items-center justify-center gap-1.5 ${
+                          onClick={() => setFormData({ ...formData, priority: opt.value as Priority })}
+                          className={`flex-1 py-2.5 rounded-lg border transition-all font-body text-sm font-medium ${
                             isSelected
-                              ? `border-transparent ${opt.color} text-white`
-                              : 'border-white/10 hover:border-white/20 bg-[var(--color-bg-surface)]'
+                              ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)] border-[var(--color-primary)]'
+                              : 'bg-[var(--color-surface-container-low)] border-[var(--color-outline-variant)]/30 text-[var(--color-on-surface-variant)] hover:border-[var(--color-primary)]/50'
                           }`}
                         >
-                          <div className={`w-2 h-2 rounded-full ${isSelected ? 'bg-white' : opt.color}`} />
-                          <span className={`text-xs ${isSelected ? 'text-white' : 'text-[var(--color-text-secondary)]'}`}>
-                            {opt.label}
-                          </span>
+                          {opt.label}
                         </button>
                       );
                     })}
                   </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                  详细描述 <span className="text-[var(--color-error)]">*</span>
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="详细描述任务需求、支持 Markdown 格式..."
-                  rows={5}
-                  className="w-full px-4 py-3 rounded-xl bg-[var(--color-bg-surface)] border border-white/10 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary-500)] focus:ring-2 focus:ring-[var(--color-primary-500)]/20 transition-all resize-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                  技术标签
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                    placeholder="输入标签后按回车添加..."
-                    className="flex-1 px-4 py-2.5 rounded-xl bg-[var(--color-bg-surface)] border border-white/10 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary-500)] transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={addTag}
-                    className="px-4 py-2.5 rounded-xl bg-[var(--color-bg-surface)] border border-white/10 hover:border-[var(--color-primary-500)] text-[var(--color-text-secondary)] transition-all"
-                  >
-                    <Plus size={18} />
-                  </button>
-                </div>
-                {formData.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {formData.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm bg-[var(--color-primary-500)]/10 text-[var(--color-primary-400)]"
-                      >
-                        {tag}
-                        <button
-                          type="button"
-                          onClick={() => removeTag(tag)}
-                          className="hover:text-[var(--color-error)] transition-colors"
-                        >
-                          <X size={14} />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+                {/* Target Environment */}
                 <div>
-                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                    期望交付物
+                  <label className="block text-sm font-medium text-[var(--color-on-surface)] mb-2 font-body">
+                    Target Environment
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.expectedDelivery}
                     onChange={(e) => setFormData({ ...formData, expectedDelivery: e.target.value })}
-                    placeholder="如：代码审查报告"
-                    className="w-full px-4 py-2.5 rounded-xl bg-[var(--color-bg-surface)] border border-white/10 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary-500)] transition-all"
-                  />
+                    className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-container-low)] border border-[var(--color-outline-variant)]/30 text-[var(--color-on-surface)] focus:outline-none focus:border-[var(--color-primary)] transition-all font-body text-sm cursor-pointer appearance-none"
+                  >
+                    <option value="local">Local Development</option>
+                    <option value="staging">Staging Server</option>
+                    <option value="production">Production</option>
+                  </select>
                 </div>
+
+                {/* Attachments / Context - 拖拽上传区 */}
                 <div>
-                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                    截止日期
+                  <label className="block text-sm font-medium text-[var(--color-on-surface)] mb-2 font-body">
+                    Attachments / Context
+                  </label>
+                  <div className="border-2 border-dashed border-[var(--color-outline-variant)]/50 rounded-lg p-8 text-center hover:border-[var(--color-primary)]/50 transition-colors cursor-pointer group">
+                    <CloudUpload size={32} className="mx-auto text-[var(--color-outline)] mb-2 group-hover:text-[var(--color-primary)] transition-colors" />
+                    <p className="text-sm text-[var(--color-on-surface-variant)] font-body">
+                      Drag & drop logs, screenshots, or diffs
+                    </p>
+                    <p className="text-xs text-[var(--color-outline)] mt-1">
+                      or click to browse files
+                    </p>
+                  </div>
+                </div>
+
+                {/* Created By */}
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-on-surface)] mb-2 font-body">
+                    Your Name
                   </label>
                   <input
-                    type="date"
-                    value={formData.dueDate}
-                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl bg-[var(--color-bg-surface)] border border-white/10 text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-primary-500)] transition-all"
+                    type="text"
+                    value={formData.createdBy}
+                    onChange={(e) => setFormData({ ...formData, createdBy: e.target.value })}
+                    placeholder="For Shadow to reach you"
+                    className="w-full px-4 py-2.5 rounded-lg bg-[var(--color-surface-container-low)] border border-[var(--color-outline-variant)]/30 text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)] focus:outline-none focus:border-[var(--color-primary)] transition-all font-body text-sm"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                  你的名字
-                </label>
-                <input
-                  type="text"
-                  value={formData.createdBy}
-                  onChange={(e) => setFormData({ ...formData, createdBy: e.target.value })}
-                  placeholder="方便影子分身联系你"
-                  className="w-full px-4 py-2.5 rounded-xl bg-[var(--color-bg-surface)] border border-white/10 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary-500)] transition-all"
-                />
-              </div>
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex-1 py-3 rounded-lg border border-[var(--color-outline-variant)]/50 text-[var(--color-on-surface-variant)] font-body text-sm font-medium hover:bg-[var(--color-surface-variant)]/50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !formData.title.trim()}
+                    className="flex-1 py-3 rounded-lg bg-[var(--color-secondary)] text-[var(--color-on-secondary)] font-body text-sm font-medium hover:bg-[var(--color-secondary-container)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? (
+                      <motion.span
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                        className="inline-block"
+                      >
+                        ⏳
+                      </motion.span>
+                    ) : (
+                      <>
+                        Submit to Shadow
+                        <ArrowRight size={16} />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 btn-secondary"
-                >
-                  取消
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !formData.title.trim()}
-                  className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                >
-                  {isSubmitting ? (
-                    <motion.span
-                      animate={{ rotate: 360 }}
-                      transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                      className="inline-block"
-                    >
-                      ⏳
-                    </motion.span>
-                  ) : (
-                    <>
-                      <Plus size={18} />
-                      {editTask ? '保存修改' : '创建任务'}
-                    </>
-                  )}
-                </button>
+              {/* 右侧系统状态面板 */}
+              <div className="w-72 border-l border-[var(--color-outline-variant)]/30 p-5 bg-[var(--color-surface-container-low)]/50 overflow-y-auto">
+                <h3 className="font-headline text-base text-[var(--color-on-surface)] mb-4 flex items-center gap-2">
+                  <Server size={18} className="text-[var(--color-primary)]" />
+                  SYSTEM STATUS
+                </h3>
+
+                {/* Online Status */}
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]" />
+                  <span className="font-body text-sm text-[var(--color-on-surface)]">ONLINE</span>
+                </div>
+
+                {/* Active Clones Progress */}
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-body text-xs text-[var(--color-on-surface-variant)]">Active Clones</span>
+                    <span className="font-mono text-xs text-[var(--color-on-surface)]">3/5</span>
+                  </div>
+                  <div className="w-full h-2 bg-[var(--color-surface-container-low)] rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-[var(--color-primary)]/70 rounded-full transition-all"
+                      style={{ width: '60%' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Queue Time */}
+                <div className="mb-6 flex items-center gap-2">
+                  <Clock size={14} className="text-[var(--color-outline)]" />
+                  <span className="font-body text-xs text-[var(--color-on-surface-variant)]">
+                    Estimated Queue Time: <span className="font-mono text-[var(--color-on-surface)]">~4m 20s</span>
+                  </span>
+                </div>
+
+                {/* Current Workload */}
+                <div className="pt-4 border-t border-[var(--color-outline-variant)]/30">
+                  <h4 className="font-body text-xs font-medium text-[var(--color-on-surface)] mb-3 uppercase tracking-wide">
+                    Current Workload
+                  </h4>
+                  
+                  <div className="space-y-3">
+                    <div className="bg-[var(--color-surface-container-low)] rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Activity size={12} className="text-[var(--color-secondary)] animate-pulse" />
+                        <span className="font-mono text-[10px] text-[var(--color-on-surface)]">DB Schema Migration</span>
+                      </div>
+                      <p className="text-[10px] text-[var(--color-on-surface-variant)] font-body">
+                        Generating rollback scripts...
+                      </p>
+                    </div>
+
+                    <div className="bg-[var(--color-surface-container-low)] rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Users size={12} className="text-[var(--color-outline)]" />
+                        <span className="font-mono text-[10px] text-[var(--color-on-surface)]">Auth Refactor</span>
+                      </div>
+                      <p className="text-[10px] text-[var(--color-on-surface-variant)] font-body">
+                        Queued
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </form>
+            </div>
           </motion.div>
         </>
       )}

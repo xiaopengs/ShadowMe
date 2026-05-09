@@ -54,6 +54,11 @@
   --color-on-tertiary-fixed: #2e1515;
   --color-on-tertiary-fixed-variant: #6e3030;
 
+  --color-success: #16a34a;
+  --color-success-container: #dcfce7;
+  --color-on-success: #ffffff;
+  --color-on-success-container: #166534;
+
   --font-headline: 'EB Garamond', serif;
   --font-display: 'EB Garamond', serif;
   --font-body: 'Manrope', sans-serif;
@@ -119,6 +124,11 @@
   --color-tertiary-fixed-dim: #ffafd3;
   --color-on-tertiary-fixed: #3d0026;
   --color-on-tertiary-fixed-variant: #85145a;
+
+  --color-success: #4ade80;
+  --color-success-container: #166534;
+  --color-on-success: #003d14;
+  --color-on-success-container: #86efac;
 
   --font-headline: 'Geist', 'Inter', sans-serif;
   --font-display: 'Geist', 'Inter', sans-serif;
@@ -389,6 +399,11 @@
 
   --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
   --shadow-glow: 0 0 20px rgba(123, 209, 250, 0.3);
+
+  --color-success: #4ade80;
+  --color-success-container: #166534;
+  --color-on-success: #003d14;
+  --color-on-success-container: #86efac;
 }
 
 /* ============ ALEXANDRIA THEME ============ */
@@ -495,6 +510,11 @@
   --color-on-tertiary-fixed: #3d0026;
   --color-on-tertiary-fixed-variant: #85145a;
 
+  --color-success: #4ade80;
+  --color-success-container: #166534;
+  --color-on-success: #003d14;
+  --color-on-success-container: #86efac;
+
   --font-headline: 'Geist', 'Inter', sans-serif;
   --font-display: 'Geist', 'Inter', sans-serif;
   --font-body: 'Inter', sans-serif;
@@ -550,6 +570,16 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Theme transition for all color-related properties */
+[data-theme],
+[data-theme] * {
+  transition: background-color 0.3s ease, 
+              color 0.3s ease,
+              border-color 0.3s ease,
+              box-shadow 0.3s ease;
 }
 
 ::selection {
@@ -710,6 +740,16 @@ body {
   transform: scale(0.98);
 }
 
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-primary:disabled:hover {
+  background-color: var(--color-primary);
+}
+
 .btn-secondary {
   display: inline-flex;
   align-items: center;
@@ -782,6 +822,54 @@ body {
 textarea.input-field {
   resize: vertical;
   min-height: 120px;
+}
+
+/* ========================================
+   ICON BUTTON UTILITIES
+   ======================================== */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  color: var(--color-on-surface-variant);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.icon-btn:hover {
+  background-color: var(--color-surface-container-high);
+  color: var(--color-on-surface);
+}
+
+.icon-btn:active {
+  transform: scale(0.95);
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.icon-btn-primary {
+  color: var(--color-primary);
+}
+
+.icon-btn-primary:hover {
+  background-color: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+
+.icon-btn-danger {
+  color: var(--color-error);
+}
+
+.icon-btn-danger:hover {
+  background-color: var(--color-error-container);
+  color: var(--color-on-error-container);
 }
 
 /* ========================================
@@ -866,13 +954,13 @@ textarea.input-field {
 }
 
 .priority-urgent {
-  background-color: color-mix(in srgb, #ef4444 20%, transparent);
-  color: #ef4444;
+  background-color: color-mix(in srgb, var(--color-error) 20%, transparent);
+  color: var(--color-error);
 }
 
 .priority-high {
-  background-color: color-mix(in srgb, #f59e0b 20%, transparent);
-  color: #f59e0b;
+  background-color: color-mix(in srgb, var(--color-tertiary) 20%, transparent);
+  color: var(--color-tertiary);
 }
 
 .priority-medium {
@@ -904,4 +992,66 @@ textarea.input-field {
 .status-dot-error {
   background-color: var(--color-error);
   box-shadow: 0 0 8px var(--color-error);
+}
+
+/* ========================================
+   EXTRA ANIMATIONS
+   ======================================== */
+
+/* Slow spin for sync icon */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+/* Energy line glow effect */
+.shadow-energy-line {
+  box-shadow: 0 0 8px var(--color-primary), 0 0 15px var(--color-primary-container);
+}
+
+/* Filled icon style */
+.filled-icon {
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+/* ========================================
+   GLASS HEAVY UTILITY
+   ======================================== */
+.glass-heavy {
+  background-color: color-mix(in srgb, var(--color-surface-container-high) 90%, transparent);
+  backdrop-filter: blur(20px) saturate(200%);
+  -webkit-backdrop-filter: blur(20px) saturate(200%);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 40%, transparent);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* ========================================
+   TYPE ICONS
+   ======================================== */
+.type-technical_issue {
+  background-color: color-mix(in srgb, var(--color-error) 15%, transparent);
+  color: var(--color-error);
+}
+
+.type-design_doc {
+  background-color: color-mix(in srgb, var(--color-tertiary) 15%, transparent);
+  color: var(--color-tertiary);
+}
+
+.type-code_review {
+  background-color: color-mix(in srgb, var(--color-secondary) 15%, transparent);
+  color: var(--color-secondary);
+}
+
+.type-other {
+  background-color: color-mix(in srgb, var(--color-outline) 15%, transparent);
+  color: var(--color-outline);
 }

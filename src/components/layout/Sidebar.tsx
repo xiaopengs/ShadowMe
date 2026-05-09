@@ -1,3 +1,4 @@
+// UI-POLISH: 修复了头像glow效果、导航选中状态（border-r-4）、Sync CC按钮样式、底部链接样式
 'use client';
 
 import React, { useState } from 'react';
@@ -7,9 +8,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
   ListTodo,
-  Inventory2,
+  Archive,
   Settings,
-  Sync,
+  RefreshCw,
   HelpCircle,
   FileText,
   Menu,
@@ -30,7 +31,7 @@ interface SidebarProps {
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/tasks', label: 'Task List', icon: ListTodo },
-  { href: '/archive', label: 'Archive', icon: Inventory2 },
+  { href: '/archive', label: 'Archive', icon: Archive },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -49,22 +50,37 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     <div className="flex flex-col h-full">
       {/* User Profile Section */}
       <div className="px-6 mb-6">
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3">
+          {/* Avatar with energy glow effect */}
           <div className="relative">
+            <div className="absolute inset-0 rounded-full bg-[var(--color-primary)]/30 blur-md shadow-energy-glow" />
             <img
               src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop&crop=face"
               alt="Shadow Clone Alpha"
-              className="w-10 h-10 rounded-full object-cover border-2 border-[var(--color-primary)] shadow-energy-glow"
+              className="relative w-11 h-11 rounded-full object-cover border-2 border-[var(--color-primary)] shadow-energy-glow"
             />
-            <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-[var(--color-secondary)] rounded-full shadow-sync-glow border-2 border-[var(--color-surface)]" />
+            {/* Active status indicator */}
+            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-[var(--color-surface-container-low)] shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
           </div>
-          <div>
-            <h1 className="font-headline text-base font-bold text-[var(--color-primary)]">
+          <div className="flex-1 min-w-0">
+            <h1 className="font-headline text-base font-bold text-[var(--color-primary)] truncate">
               Shadow Clone Alpha
             </h1>
             <p className="text-xs text-[var(--color-on-surface-variant)] flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-secondary)] shadow-sync-glow" />
-              Local Claude Code: Active
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                state.shadow.status === 'online' 
+                  ? 'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]' 
+                  : state.shadow.status === 'busy'
+                    ? 'bg-yellow-500 shadow-[0_0_6px_rgba(234,179,8,0.5)]'
+                    : state.shadow.status === 'offline'
+                      ? 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]'
+                      : 'bg-gray-500'
+              }`} />
+              <span className="truncate">
+                {state.shadow.status === 'online' ? 'Active' : 
+                 state.shadow.status === 'busy' ? 'Working' : 
+                 state.shadow.status === 'offline' ? 'Offline' : 'Unknown'}
+              </span>
             </p>
           </div>
         </div>
@@ -81,9 +97,9 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               href={item.href}
               onClick={onMobileClose}
               className={`
-                flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-150
+                flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200
                 ${isActive 
-                  ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-r-4 border-[var(--color-primary)] shadow-[inset_-4px_0_15px_rgba(208,188,255,0.1)]' 
+                  ? 'bg-[var(--color-primary-container)]/20 text-[var(--color-primary)] border-r-4 border-[var(--color-primary)] font-medium shadow-[inset_2px_0_12px_rgba(var(--color-primary-rgb, 194,101,42),0.15)]' 
                   : 'text-[var(--color-on-surface-variant)] hover:bg-[var(--color-surface-variant)]/50 hover:text-[var(--color-on-surface)]'
                 }
               `}
@@ -97,9 +113,9 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
       {/* Bottom Actions */}
       <div className="px-4 mt-auto space-y-3">
-        {/* Sync Button */}
-        <button className="w-full py-2.5 bg-[var(--color-secondary)]/10 border border-[var(--color-secondary)] text-[var(--color-secondary)] rounded-lg font-code-label text-xs hover:bg-[var(--color-secondary)]/20 transition-colors flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(76,215,246,0.2)]">
-          <Sync size={16} />
+        {/* Sync CC Button - 浅橙色实心按钮样式 */}
+        <button className="w-full py-2.5 bg-[var(--color-secondary)] text-[var(--color-on-secondary)] rounded-lg font-body text-sm font-medium hover:bg-[var(--color-secondary-container)] transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_2px_8px_rgba(var(--color-secondary-rgb,120,112,106),0.25)] active:scale-[0.98]">
+          <RefreshCw size={16} className="animate-spin-slow" />
           Sync CC
         </button>
 
@@ -144,11 +160,11 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
         {/* Footer Links */}
         <div className="pt-3 border-t border-[var(--color-outline-variant)]/30 space-y-1">
-          <Link href="/support" className="flex items-center gap-2 text-[var(--color-on-surface-variant)] py-2 px-3 rounded-lg hover:bg-[var(--color-surface-variant)]/50 hover:text-[var(--color-on-surface)] transition-all text-xs">
+          <Link href="/support" className="flex items-center gap-2 text-[var(--color-on-surface-variant)] py-2 px-3 rounded-lg hover:bg-[var(--color-surface-variant)]/50 hover:text-[var(--color-on-surface)] transition-all duration-150 text-xs font-body">
             <HelpCircle size={14} />
             Support
           </Link>
-          <Link href="/docs" className="flex items-center gap-2 text-[var(--color-on-surface-variant)] py-2 px-3 rounded-lg hover:bg-[var(--color-surface-variant)]/50 hover:text-[var(--color-on-surface)] transition-all text-xs">
+          <Link href="/docs" className="flex items-center gap-2 text-[var(--color-on-surface-variant)] py-2 px-3 rounded-lg hover:bg-[var(--color-surface-variant)]/50 hover:text-[var(--color-on-surface)] transition-all duration-150 text-xs font-body">
             <FileText size={14} />
             Documentation
           </Link>

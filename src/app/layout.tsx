@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ConfirmDialogProvider } from "@/components/ui/ConfirmDialog";
+import { ToastProvider } from "@/components/ui/Toast";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -75,7 +76,9 @@ export default function RootLayout({
         <ThemeProvider>
           <AppProvider>
             <ConfirmDialogProvider>
-              {children}
+              <ToastProvider>
+                {children}
+              </ToastProvider>
             </ConfirmDialogProvider>
           </AppProvider>
         </ThemeProvider>
