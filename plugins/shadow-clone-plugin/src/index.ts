@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
+import WebSocket from 'ws';
 import type { Task, ShadowConfig, TaskResult, GitLabMR } from './types';
 
 class ShadowClonePlugin extends EventEmitter {
@@ -43,7 +44,7 @@ class ShadowClonePlugin extends EventEmitter {
         this.sendHeartbeat();
       });
 
-      this.ws.on('message', (data) => {
+      this.ws.on('message', (data: WebSocket.RawData) => {
         try {
           const message = JSON.parse(data.toString());
           this.handleMessage(message);

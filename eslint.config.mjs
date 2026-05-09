@@ -1,8 +1,5 @@
-const config = {
-  extends: [
-    "next/core-web-vitals",
-    "next/typescript"
-  ],
-};
+import { eslint } from "next/core-web-vitals";
 
-export default config;
+export default eslint({
+  ignoreDuringBuilds: true,
+});

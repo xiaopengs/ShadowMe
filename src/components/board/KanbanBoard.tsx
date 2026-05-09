@@ -14,8 +14,8 @@ import {
 } from 'lucide-react';
 import type { Task, TaskStatus, TaskType, Priority } from '@/types';
 import { STATUS_LABELS, TASK_TYPE_LABELS, PRIORITY_LABELS, COLUMN_ORDER } from '@/types';
-import TaskCard from './TaskCard';
-import TaskForm from './TaskForm';
+import TaskCard from '@/components/tasks/TaskCard';
+import TaskForm from '@/components/tasks/TaskForm';
 
 const columnIcons: Record<TaskStatus, React.ElementType> = {
   pending: Inbox,
