@@ -1,204 +1,364 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import gsap from 'gsap';
-import { Bot, Zap, Users, GitBranch, ArrowDown, ExternalLink } from 'lucide-react';
-import Navbar from '@/components/layout/Navbar';
-import ShadowStatus from '@/components/shadow/ShadowStatus';
-import KanbanBoard from '@/components/board/KanbanBoard';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Plus,
+  MoreHorizontal,
+  CheckCircle,
+  Sync,
+  Clock,
+  Merge,
+  Settings,
+  Wifi
+} from 'lucide-react';
+import AppLayout from '@/components/layout/AppLayout';
 import { useApp } from '@/context/AppContext';
+import type { Task, TaskStatus } from '@/types';
 
-export default function HomePage() {
-  const { state } = useApp();
-  const heroRef = useRef<HTMLDivElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const subtitleRef = useRef<HTMLParagraphElement>(null);
+interface TaskCardProps {
+  task: Task;
+  variant?: 'default' | 'active' | 'completed';
+}
 
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.from(titleRef.current, {
-        opacity: 0,
-        y: 40,
-        duration: 0.8,
-        ease: 'power3.out',
-        delay: 0.2,
-      });
-      gsap.from(subtitleRef.current, {
-        opacity: 0,
-        y: 30,
-        duration: 0.6,
-        ease: 'power3.out',
-        delay: 0.4,
-      });
-    }, heroRef);
+function TaskCardComponent({ task, variant = 'default' }: TaskCardProps) {
+  const isActive = variant === 'active';
+  const isCompleted = variant === 'completed';
 
-    return () => ctx.revert();
-  }, []);
+  const formatTimeAgo = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diff < 60) return `${diff}s AGO`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}M AGO`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}H AGO`;
+    return `${Math.floor(diff / 86400)}D AGO`;
+  };
 
-  const scrollToBoard = () => {
-    document.getElementById('board')?.scrollIntoView({ behavior: 'smooth' });
+  const getPriorityClass = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'priority-urgent';
+      case 'high': return 'priority-high';
+      case 'medium': return 'priority-medium';
+      default: return 'priority-low';
+    }
   };
 
   return (
-    <div className="min-h-screen">
-      <Navbar />
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      whileHover={{ y: -4 }}
+      className={`
+        bg-[var(--color-surface-container-high)] rounded-lg p-4 border transition-all cursor-grab
+        ${isActive 
+          ? 'border-[var(--color-primary)]/50 shadow-energy-glow relative' 
+          : isCompleted 
+            ? 'border-[var(--color-outline-variant)]/10' 
+            : 'border-[var(--color-outline-variant)]/10 hover:border-[var(--color-outline-variant)]/50'
+        }
+      `}
+    >
+      {/* Energy Line for Active Tasks */}
+      {isActive && (
+        <div className="absolute left-0 top-4 bottom-4 w-0.5 bg-[var(--color-primary)] rounded-r-full shadow-energy-glow" />
+      )}
 
-      <section
-        ref={heroRef}
-        className="relative min-h-[60vh] flex items-center justify-center overflow-hidden"
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-[var(--color-bg-base)] via-[var(--color-bg-elevated)] to-[var(--color-bg-base)]" />
+      <div className={`${isActive ? 'pl-3' : ''}`}>
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3">
+          <span className={`
+            code-label px-2 py-0.5 rounded
+            ${isCompleted 
+              ? 'bg-[var(--color-surface-variant)] text-[var(--color-outline)] line-through' 
+              : isActive
+                ? 'bg-[var(--color-secondary)]/10 text-[var(--color-secondary)] flex items-center gap-1'
+                : 'bg-[var(--color-primary-container)]/10 text-[var(--color-primary-container)]'
+            }
+          `}>
+            {isActive && <Sync size={12} className="animate-spin" />}
+            {task.id.slice(0, 10).toUpperCase()}
+          </span>
+          <button className="text-[var(--color-outline)] hover:text-[var(--color-on-surface)] transition-colors">
+            <MoreHorizontal size={18} />
+          </button>
+        </div>
 
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[var(--color-primary-500)] rounded-full opacity-10 blur-[120px] animate-float-orb" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-[var(--color-secondary-500)] rounded-full opacity-10 blur-[100px] animate-float-orb-reverse" />
+        {/* Description */}
+        <p className={`font-body text-sm text-[var(--color-on-surface)] mb-4 ${isCompleted ? 'line-through decoration-[var(--color-outline-variant)]' : ''}`}>
+          {task.title}
+        </p>
 
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC40Ij48cGF0aCBkPSJNMzYgMzRoLTJ2LTRoMnY0em0wLTZ2LTJoLTJ2Mmgyem0tNiA2aC0ydi00aDJ2NHptMC02di0yaC0ydjJoMnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
+        {/* Mini Terminal for Active Tasks */}
+        {isActive && (
+          <div className="bg-[var(--color-surface-container-lowest)] rounded p-2 font-mono text-[10px] text-[var(--color-on-surface-variant)] mb-4 border border-[var(--color-outline-variant)]/20">
+            <span className="text-[var(--color-secondary)]">&gt;</span> Analyzing task context<br />
+            <span className="text-[var(--color-secondary)]">&gt;</span> Initializing clone<br />
+            <span className="text-[var(--color-primary)]">&gt;</span> Processing...
+          </div>
+        )}
 
-        <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="mb-6"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-light text-sm">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-success)] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-success)]"></span>
-              </span>
-              <span className="text-[var(--color-text-secondary)]">影子分身已就位</span>
+        {/* Footer */}
+        <div className="flex items-center justify-between mt-auto">
+          <div className="flex items-center gap-2 text-[var(--color-on-surface-variant)]">
+            <img
+              src={isActive 
+                ? "https://images.unsplash.com/photo-1531297461136-82af7ce98621?w=40&h=40&fit=crop"
+                : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
+              }
+              alt={isActive ? "Shadow Clone" : "Requester"}
+              className={`w-5 h-5 rounded-full object-cover ${isActive ? 'shadow-energy-glow' : ''}`}
+            />
+            <span className="text-[11px] font-mono">
+              {isActive ? 'Shadow.OS' : task.createdBy.split(' ')[0]}
+            </span>
+          </div>
+          
+          {isCompleted ? (
+            <div className="flex items-center gap-1 text-[var(--color-secondary)] text-[11px] font-mono">
+              <CheckCircle size={14} />
+              Merged
             </div>
-          </motion.div>
+          ) : isActive ? (
+            <span className="text-[var(--color-secondary)] text-[11px] font-mono animate-pulse">
+              ACTIVE
+            </span>
+          ) : (
+            <span className="text-[var(--color-outline)] text-[11px] font-mono">
+              {formatTimeAgo(task.createdAt)}
+            </span>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
-          <h1
-            ref={titleRef}
-            className="gradient-text-hero text-[clamp(2.5rem,8vw,4.5rem)] font-extrabold leading-[1.1] tracking-tight mb-6"
-          >
-            当主角不在时
-            <br />
-            影子替他战斗
-          </h1>
+function KanbanColumn({ 
+  title, 
+  status, 
+  tasks, 
+  variant = 'default',
+  count 
+}: { 
+  title: string; 
+  status: TaskStatus; 
+  tasks: Task[];
+  variant?: 'default' | 'active' | 'completed';
+  count: number;
+}) {
+  return (
+    <div className={`
+      flex flex-col glass-panel rounded-xl p-4
+      ${variant === 'active' ? 'border-[var(--color-primary)]/20 relative overflow-hidden' : ''}
+      ${variant === 'completed' ? 'opacity-80' : ''}
+    `}>
+      {/* Gradient bar for active column */}
+      {variant === 'active' && (
+        <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-[var(--color-primary)] to-transparent opacity-50" />
+      )}
 
-          <p
-            ref={subtitleRef}
-            className="text-lg sm:text-xl text-[var(--color-text-secondary)] max-w-2xl mx-auto mb-10"
-          >
-            智能影子分身协作看板 - 任务直达 Claude Code，结果返回 GitLab
-          </p>
+      {/* Column Header */}
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-[var(--color-outline-variant)]/30">
+        <h3 className={`
+          font-headline text-lg flex items-center gap-2
+          ${variant === 'active' ? 'text-[var(--color-primary)]' : variant === 'completed' ? 'text-[var(--color-on-surface-variant)]' : 'text-[var(--color-on-surface)]'}
+        `}>
+          <span className={`
+            w-2.5 h-2.5 rounded-full
+            ${variant === 'active' ? 'bg-[var(--color-primary)] shadow-energy-glow' : variant === 'completed' ? 'bg-[var(--color-secondary)]' : 'bg-[var(--color-outline)]'}
+          `} />
+          {title}
+        </h3>
+        <span className={`
+          px-2 py-0.5 rounded text-xs font-mono
+          ${variant === 'active' 
+            ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]' 
+            : 'bg-[var(--color-surface-container)] text-[var(--color-on-surface-variant)]'
+          }
+        `}>
+          {count}
+        </span>
+      </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button
-              onClick={scrollToBoard}
+      {/* Tasks List */}
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+        <AnimatePresence mode="popLayout">
+          {tasks.map((task) => (
+            <TaskCardComponent 
+              key={task.id} 
+              task={task} 
+              variant={variant}
+            />
+          ))}
+        </AnimatePresence>
+        
+        {tasks.length === 0 && (
+          <div className="text-center py-8 text-[var(--color-outline)] text-sm">
+            No tasks
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  const { state, fetchTasks } = useApp();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      await fetchTasks();
+      setIsLoading(false);
+    };
+    loadData();
+  }, [fetchTasks]);
+
+  // Filter tasks by status
+  const pendingTasks = state.tasks.filter(t => t.status === 'pending');
+  const inProgressTasks = state.tasks.filter(t => t.status === 'in_progress');
+  const completedTasks = state.tasks.filter(t => t.status === 'completed' || t.status === 'closed');
+
+  // Sample data for demo if no tasks
+  const demoTasks: Task[] = [
+    {
+      id: 'task-402',
+      title: 'Refactor Authentication Middleware for better error handling',
+      type: 'technical_issue',
+      priority: 'high',
+      status: 'pending',
+      description: 'Need to improve error handling in auth middleware',
+      tags: ['auth', 'middleware', 'refactor'],
+      attachments: [],
+      createdBy: 'Alex J.',
+      createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'task-403',
+      title: 'Update API documentation for v2 endpoints',
+      type: 'design_doc',
+      priority: 'medium',
+      status: 'pending',
+      description: 'Document all new v2 API endpoints',
+      tags: ['docs', 'api'],
+      attachments: [],
+      createdBy: 'Sarah M.',
+      createdAt: new Date(Date.now() - 4 * 3600000).toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'task-398',
+      title: 'Implement dark mode theme configuration parser for new UI framework',
+      type: 'code_review',
+      priority: 'high',
+      status: 'in_progress',
+      description: 'Parse tailwind config and build CSS variables',
+      tags: ['ui', 'theming', 'css'],
+      attachments: [],
+      createdBy: 'John D.',
+      createdAt: new Date(Date.now() - 1 * 3600000).toISOString(),
+      updatedAt: new Date().toISOString(),
+      startedAt: new Date(Date.now() - 30 * 60000).toISOString(),
+    },
+    {
+      id: 'task-395',
+      title: 'Update dependencies and resolve npm audit vulnerabilities',
+      type: 'technical_issue',
+      priority: 'medium',
+      status: 'completed',
+      description: 'Update all npm packages and fix security issues',
+      tags: ['dependencies', 'security'],
+      attachments: [],
+      createdBy: 'Mike R.',
+      createdAt: new Date(Date.now() - 24 * 3600000).toISOString(),
+      updatedAt: new Date().toISOString(),
+      completedAt: new Date(Date.now() - 12 * 3600000).toISOString(),
+    },
+  ];
+
+  const displayTasks = state.tasks.length > 0 ? state.tasks : demoTasks;
+  const displayPending = state.tasks.length > 0 ? pendingTasks : demoTasks.filter(t => t.status === 'pending');
+  const displayInProgress = state.tasks.length > 0 ? inProgressTasks : demoTasks.filter(t => t.status === 'in_progress');
+  const displayCompleted = state.tasks.length > 0 ? completedTasks : demoTasks.filter(t => t.status === 'completed');
+
+  return (
+    <AppLayout>
+      <div className="max-w-7xl mx-auto">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <div>
+            <h2 className="font-headline text-2xl md:text-3xl text-[var(--color-on-surface)] mb-1">
+              协作看板
+            </h2>
+            <p className="font-body text-sm text-[var(--color-on-surface-variant)]">
+              Real-time task synchronization with Local Claude Code
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {/* Shadow Status Widget */}
+            <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-3 border border-[var(--color-primary)]/20 bg-[var(--color-surface-container)]/50">
+              <div className="relative">
+                <img
+                  src="https://images.unsplash.com/photo-1531297461136-82af7ce98621?w=40&h=40&fit=crop"
+                  alt="Shadow Avatar"
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+                <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-[var(--color-secondary)] rounded-full shadow-sync-glow border-2 border-[var(--color-surface)]" />
+              </div>
+              <div className="flex flex-col">
+                <span className="code-label text-[var(--color-on-surface)]">Shadow.OS</span>
+                <span className="status-mono text-[var(--color-secondary)] uppercase">Ready & Waiting</span>
+              </div>
+            </div>
+
+            {/* Quick Create Button */}
+            <Link
+              href="/tasks/new"
               className="btn-primary"
             >
-              <Zap size={18} />
-              进入看板
-            </button>
-            <button className="btn-secondary">
-              <ExternalLink size={18} />
-              了解更多
-            </button>
+              <Plus size={18} />
+              Quick Create
+            </Link>
           </div>
         </div>
 
-        <motion.div
-          animate={{ y: [0, 10, 0] }}
-          transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10"
-        >
-          <ArrowDown size={24} className="text-white/30" />
-        </motion.div>
-      </section>
+        {/* Kanban Board */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 h-[calc(100vh-220px)] min-h-[500px]">
+          {/* Pending Column */}
+          <KanbanColumn
+            title="待处理"
+            status="pending"
+            tasks={displayPending}
+            variant="default"
+            count={displayPending.length}
+          />
 
-      <section className="py-16 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div className="lg:col-span-1">
-              <ShadowStatus />
+          {/* In Progress Column */}
+          <KanbanColumn
+            title="分身处理中"
+            status="in_progress"
+            tasks={displayInProgress}
+            variant="active"
+            count={displayInProgress.length}
+          />
 
-              <div className="glass-card p-5 mt-4">
-                <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">
-                  快速统计
-                </h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[var(--color-text-tertiary)]">总任务数</span>
-                    <span className="text-2xl font-bold text-[var(--color-text-primary)]">{state.stats.total}</span>
-                  </div>
-                  <div className="h-px bg-white/5" />
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="text-center p-3 rounded-xl bg-[var(--color-bg-surface)]">
-                      <div className="text-xl font-bold text-[var(--color-info)]">{state.stats.pending}</div>
-                      <div className="text-xs text-[var(--color-text-muted)]">待领取</div>
-                    </div>
-                    <div className="text-center p-3 rounded-xl bg-[var(--color-bg-surface)]">
-                      <div className="text-xl font-bold text-[var(--color-warning)]">{state.stats.inProgress}</div>
-                      <div className="text-xs text-[var(--color-text-muted)]">处理中</div>
-                    </div>
-                    <div className="text-center p-3 rounded-xl bg-[var(--color-bg-surface)]">
-                      <div className="text-xl font-bold text-[var(--color-success)]">{state.stats.completed}</div>
-                      <div className="text-xs text-[var(--color-text-muted)]">已完成</div>
-                    </div>
-                    <div className="text-center p-3 rounded-xl bg-[var(--color-bg-surface)]">
-                      <div className="text-xl font-bold text-[var(--color-text-muted)]">{state.stats.closed}</div>
-                      <div className="text-xs text-[var(--color-text-muted)]">已关闭</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="glass-card p-5 mt-4">
-                <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">
-                  功能特点
-                </h3>
-                <div className="space-y-3">
-                  {[
-                    { icon: Bot, title: '智能代理', desc: 'Claude Code 自动处理' },
-                    { icon: GitBranch, title: 'GitLab 集成', desc: '代码直接提交' },
-                    { icon: Users, title: '协作友好', desc: '无需复杂操作' },
-                    { icon: Zap, title: '实时响应', desc: '状态即时同步' }
-                  ].map((item, index) => (
-                    <motion.div
-                      key={item.title}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-[var(--color-bg-surface)]"
-                    >
-                      <div className="p-2 rounded-lg bg-[var(--color-primary-500)]/10">
-                        <item.icon size={18} className="text-[var(--color-primary-400)]" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-[var(--color-text-primary)]">{item.title}</div>
-                        <div className="text-xs text-[var(--color-text-muted)]">{item.desc}</div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="lg:col-span-3" id="board">
-              <KanbanBoard tasks={state.tasks} />
-            </div>
-          </div>
+          {/* Completed Column */}
+          <KanbanColumn
+            title="已完成"
+            status="completed"
+            tasks={displayCompleted}
+            variant="completed"
+            count={displayCompleted.length}
+          />
         </div>
-      </section>
-
-      <footer className="border-t border-white/[0.06] py-8 px-4">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-gradient-to-br from-[var(--color-primary-500)] to-[var(--color-secondary-500)] flex items-center justify-center">
-              <span className="text-white text-xs font-bold">影</span>
-            </div>
-            <span className="text-sm text-[var(--color-text-muted)]">ShadowMe v1.0</span>
-          </div>
-          <p className="text-sm text-[var(--color-text-muted)]">
-            当主角不在时，影子替他战斗
-          </p>
-        </div>
-      </footer>
-    </div>
+      </div>
+    </AppLayout>
   );
 }
