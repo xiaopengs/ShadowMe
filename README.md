@@ -32,42 +32,129 @@
 
 ---
 
-## 🚀 快速开始
+## 🚀 安装与运行
 
 ### 环境要求
 
-- Node.js >= 20.0.0
-- npm 或 yarn
-- Claude Code (可选，用于自动任务执行)
+| 要求 | 版本 | 说明 |
+|------|------|------|
+| Node.js | >= 20.0.0 | 推荐使用 LTS 版本 |
+| npm | >= 10.0.0 | 或使用 yarn/pnpm |
+| 数据库 | SQLite | 自动创建，无需安装 |
 
-### 安装
+### 安装步骤
 
 ```bash
-# 克隆项目
+# 1. 克隆项目
 git clone https://github.com/yourusername/shadow-clone.git
 cd shadow-clone
 
-# 安装依赖
+# 2. 安装依赖
 npm install
 
-# 初始化数据库
-npm run db:init
-
-# 启动开发服务器
+# 3. 启动开发服务器
 npm run dev
 ```
 
 访问 `http://localhost:3000` 打开看板。
 
-### 内网部署
+### 构建生产版本
 
 ```bash
-# 允许内网其他机器访问
-npm run dev -- -H 0.0.0.0
+# 1. 构建项目
+npm run build
+
+# 2. 启动生产服务器
+npm start
 
 # 或使用自定义端口
-PORT=8080 npm run dev
+PORT=8080 npm start
 ```
+
+### 内网部署
+
+允许内网其他机器访问：
+
+```bash
+# 开发模式（所有网卡）
+npm run dev -- -H 0.0.0.0
+
+# 生产模式
+HOST=0.0.0.0 npm start
+```
+
+其他机器访问：`http://<your-ip>:3000`
+
+---
+
+## ⚙️ 配置指南
+
+### 环境变量配置
+
+创建 `.env.local` 文件（可选，会使用默认值）：
+
+```env
+# ============ 看板服务配置 ============
+# 基础路径，默认为 /
+NEXT_PUBLIC_BASE_PATH=/
+
+# ============ GitLab 集成配置（可选）===========
+# GitLab 服务器地址
+GITLAB_URL=https://gitlab.com
+
+# GitLab Personal Access Token
+GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
+
+# 默认项目 ID 或路径
+GITLAB_DEFAULT_PROJECT=namespace/project
+
+# ============ Claude Code 插件配置 ============
+# 看板 API 地址
+SHADOW_BOARD_URL=http://localhost:3000
+
+# Claude Code 工作目录
+WORKING_DIRECTORY=/path/to/your/work
+```
+
+### GitLab 集成配置
+
+1. **创建 Personal Access Token**
+   - 登录 GitLab → Settings → Access Tokens
+   - 创建 Token，勾选权限：`api`、`read_repository`、`write_repository`
+
+2. **配置 Token**
+   - 方式一：在 `.env.local` 中配置
+   - 方式二：在 Web 界面设置页配置
+
+3. **验证连接**
+   - 访问 `/settings` → GitLab 标签页
+   - 填写配置后保存
+
+### Claude Code 插件配置
+
+```bash
+# 进入插件目录
+cd plugins/shadow-clone-plugin
+
+# 安装插件依赖
+npm install
+
+# 复制配置模板
+cp .env.example .env
+
+# 编辑配置
+vim .env
+```
+
+插件配置项：
+
+| 变量 | 必填 | 说明 | 示例 |
+|------|------|------|------|
+| `SHADOW_BOARD_URL` | 是 | 看板地址 | `http://localhost:3000` |
+| `GITLAB_URL` | 否 | GitLab 地址 | `https://gitlab.com` |
+| `GITLAB_TOKEN` | 否 | GitLab Token | `glpat-xxx` |
+| `GITLAB_DEFAULT_PROJECT` | 否 | 默认项目 | `mygroup/myproject` |
+| `WORKING_DIRECTORY` | 否 | 工作目录 | `/home/user/projects` |
 
 ---
 
@@ -128,41 +215,17 @@ shadow-clone/
 │   ├── components/             # React 组件
 │   │   ├── board/             # 看板组件
 │   │   ├── tasks/             # 任务组件
-│   │   ├── shadow/            # 影子分身组件
-│   │   ├── layout/            # 布局组件
-│   │   └── ui/                # UI 基础组件
+│   │   ├── shadow/             # 影子分身组件
+│   │   ├── layout/             # 布局组件
+│   │   └── ui/                 # UI 基础组件
 │   ├── context/               # React Context
 │   ├── lib/                   # 工具库
 │   └── types/                 # TypeScript 类型
 ├── plugins/
 │   └── shadow-clone-plugin/   # Claude Code 插件
 ├── docs/                      # 文档
-└── data/                      # SQLite 数据库
+└── data/                      # SQLite 数据库（自动生成）
 ```
-
----
-
-## ⚙️ 配置
-
-### 环境变量
-
-创建 `.env.local` 文件：
-
-```env
-# 看板服务
-NEXT_PUBLIC_BASE_PATH=/
-
-# GitLab 配置（可选）
-GITLAB_URL=https://gitlab.com
-GITLAB_TOKEN=your-personal-access-token
-GITLAB_DEFAULT_PROJECT=namespace/project
-```
-
-### GitLab 集成
-
-1. 在 GitLab 创建 Personal Access Token
-2. 权限要求：`api`、`read_repository`、`write_repository`
-3. 在设置页面填入 GitLab 配置
 
 ---
 
@@ -234,7 +297,7 @@ GITLAB_DEFAULT_PROJECT=namespace/project
 cd plugins/shadow-clone-plugin
 npm install
 cp .env.example .env
-# 编辑 .env 填入配置
+vim .env  # 编辑配置
 ```
 
 ### 插件命令
@@ -288,6 +351,18 @@ cp .env.example .env
 - ✅ API 密钥环境变量存储
 - ⚠️ 本地网络访问控制
 - ⚠️ 建议配合内网防火墙
+
+---
+
+## 📝 常用命令
+
+| 命令 | 说明 |
+|------|------|
+| `npm install` | 安装依赖 |
+| `npm run dev` | 启动开发服务器 |
+| `npm run build` | 构建生产版本 |
+| `npm start` | 启动生产服务器 |
+| `npm run lint` | 运行代码检查 |
 
 ---
 
