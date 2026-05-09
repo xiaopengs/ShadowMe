@@ -192,7 +192,7 @@ export default function HomePage() {
             <div className="w-6 h-6 rounded bg-gradient-to-br from-[var(--color-primary-500)] to-[var(--color-secondary-500)] flex items-center justify-center">
               <span className="text-white text-xs font-bold">影</span>
             </div>
-            <span className="text-sm text-[var(--color-text-muted)]">Shadow Clone v1.0</span>
+            <span className="text-sm text-[var(--color-text-muted)]">ShadowMe v1.0</span>
           </div>
           <p className="text-sm text-[var(--color-text-muted)]">
             当主角不在时，影子替他战斗

@@ -58,7 +58,7 @@ export default function Navbar() {
                   <div className="absolute inset-0 bg-gradient-to-br from-[#29C16A] to-[#0EA5E9] rounded-lg blur-lg opacity-30 group-hover:opacity-50 transition-opacity" />
                 </div>
                 <span className="text-lg font-semibold text-[var(--color-text-primary)] hidden sm:block">
-                  Shadow Clone
+                  ShadowMe
                 </span>
               </Link>
 

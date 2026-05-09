@@ -1,14 +1,14 @@
-# Shadow Clone 代码审查报告
+# ShadowMe 代码审查报告
 
 > 审查日期: 2026-05-09
-> 审查范围: `/workspace/shadow-clone/src/`
+> 审查范围: `/workspace/ShadowMe/src/`
 > 审查人: 自动化代码审查
 
 ---
 
 ## 执行摘要
 
-本报告对 Shadow Clone 项目进行了全面的代码审查，涵盖前端组件、API 路由、状态管理、类型定义和数据库层。整体代码质量良好，但存在若干需要关注的安全、性能和可维护性问题。
+本报告对 ShadowMe 项目进行了全面的代码审查，涵盖前端组件、API 路由、状态管理、类型定义和数据库层。整体代码质量良好，但存在若干需要关注的安全、性能和可维护性问题。
 
 | 评估维度 | 评分 | 说明 |
 |---------|------|------|
@@ -26,7 +26,7 @@
 
 ### 1. 语法错误导致编译失败
 
-**文件**: [ShadowStatus.tsx#L153](file:///workspace/shadow-clone/src/components/shadow/ShadowStatus.tsx#L153)
+**文件**: [ShadowStatus.tsx#L153](file:///workspace/ShadowMe/src/components/shadow/ShadowStatus.tsx#L153)
 
 ```typescript
 // 当前代码 - 缺少右引号
@@ -46,7 +46,7 @@
 
 ### 2. 数据库连接管理问题
 
-**文件**: [db.ts](file:///workspace/shadow-clone/src/lib/db.ts#L85-L90)
+**文件**: [db.ts](file:///workspace/ShadowMe/src/lib/db.ts#L85-L90)
 
 **问题**: `getDatabase()` 每次调用都创建新的 `Database` 实例，虽然调用后 `close()`，但 better-sqlite3 推荐使用单一连接。
 
@@ -86,7 +86,7 @@ export function closeDatabase(): void {
 
 ### 3. XSS 漏洞风险
 
-**文件**: [TaskForm.tsx#L299-L305](file:///workspace/shadow-clone/src/components/tasks/TaskForm.tsx#L299-L305)
+**文件**: [TaskForm.tsx#L299-L305](file:///workspace/ShadowMe/src/components/tasks/TaskForm.tsx#L299-L305)
 
 **问题**: `createdBy` 字段直接渲染，可能导致 XSS 攻击。
 
@@ -123,7 +123,7 @@ const sanitizedCreatedBy = DOMPurify.sanitize(formData.createdBy, { ALLOWED_TAGS
 
 ### 4. API 路由缺少输入验证
 
-**文件**: [gitlab/route.ts#L170-L191](file:///workspace/shadow-clone/src/app/api/gitlab/route.ts#L170-L191)
+**文件**: [gitlab/route.ts#L170-L191](file:///workspace/ShadowMe/src/app/api/gitlab/route.ts#L170-L191)
 
 **问题**: `createFile` 函数未验证 `file_path` 参数。
 
@@ -162,7 +162,7 @@ async function createFile(config: GitLabConfig, projectId: string, params: { ...
 
 ### 5. 使用浏览器原生对话框
 
-**文件**: [TaskCard.tsx#L76-L82](file:///workspace/shadow-clone/src/components/tasks/TaskCard.tsx#L76-L82)
+**文件**: [TaskCard.tsx#L76-L82](file:///workspace/ShadowMe/src/components/tasks/TaskCard.tsx#L76-L82)
 
 **问题**: 使用 `confirm()` 会阻塞 UI，建议使用自定义模态框。
 
@@ -208,7 +208,7 @@ const handleDelete = async (e: React.MouseEvent) => {
 
 ### 6. 缺少 React 性能优化
 
-**文件**: [KanbanBoard.tsx](file:///workspace/shadow-clone/src/components/board/KanbanBoard.tsx)
+**文件**: [KanbanBoard.tsx](file:///workspace/ShadowMe/src/components/board/KanbanBoard.tsx)
 
 **问题**: 组件未使用 `memo` 包装，频繁重新渲染影响性能。
 
@@ -257,7 +257,7 @@ export default function KanbanBoard({ tasks, onEditTask }: KanbanBoardProps) {
 
 ### 7. 缺少错误边界
 
-**文件**: [AppContext.tsx](file:///shadow-clone/src/context/AppContext.tsx)
+**文件**: [AppContext.tsx](file:///ShadowMe/src/context/AppContext.tsx)
 
 **问题**: React 应用缺少错误边界组件，错误会导致整个应用崩溃。
 
@@ -370,7 +370,7 @@ export function rowToTask(row: any): Task {
 
 ### 9. 缺少分页支持
 
-**文件**: [tasks/route.ts](file:///workspace/shadow-clone/src/app/api/tasks/route.ts#L27-L61)
+**文件**: [tasks/route.ts](file:///workspace/ShadowMe/src/app/api/tasks/route.ts#L27-L61)
 
 **问题**: GET `/api/tasks` 返回所有任务，没有分页，大数据量时影响性能。
 
@@ -411,7 +411,7 @@ export async function GET(request: Request) {
 
 ### 10. 缺少乐观更新
 
-**文件**: [AppContext.tsx](file:///workspace/shadow-clone/src/context/AppContext.tsx#L131-L176)
+**文件**: [AppContext.tsx](file:///workspace/ShadowMe/src/context/AppContext.tsx#L131-L176)
 
 **问题**: 删除和更新任务时没有乐观更新，用户体验不佳。
 
@@ -440,7 +440,7 @@ const deleteTask = async (id: string) => {
 
 ### 11. 变量命名不一致
 
-**文件**: [db.ts](file:///workspace/shadow-clone/src/lib/db.ts)
+**文件**: [db.ts](file:///workspace/ShadowMe/src/lib/db.ts)
 
 **问题**: 数据库字段使用 snake_case (`created_at`)，但 TypeScript 类型使用 camelCase (`createdAt`)。
 
@@ -450,7 +450,7 @@ const deleteTask = async (id: string) => {
 
 ### 12. 缺少加载状态指示
 
-**文件**: [KanbanBoard.tsx](file:///workspace/shadow-clone/src/components/board/KanbanBoard.tsx)
+**文件**: [KanbanBoard.tsx](file:///workspace/ShadowMe/src/components/board/KanbanBoard.tsx)
 
 **问题**: 过滤和搜索操作没有加载状态指示。
 
@@ -470,7 +470,7 @@ useEffect(() => {
 
 ### 13. 缺少 aria 属性
 
-**文件**: [TaskForm.tsx](file:///workspace/shadow-clone/src/components/tasks/TaskForm.tsx)
+**文件**: [TaskForm.tsx](file:///workspace/ShadowMe/src/components/tasks/TaskForm.tsx)
 
 **问题**: 表单元素缺少 `aria-label` 和 `aria-describedby`，影响可访问性。
 
@@ -489,7 +489,7 @@ useEffect(() => {
 
 ### 14. 未使用的 import
 
-**文件**: [TaskCard.tsx](file:///workspace/shadow-clone/src/components/tasks/TaskCard.tsx)
+**文件**: [TaskCard.tsx](file:///workspace/ShadowMe/src/components/tasks/TaskCard.tsx)
 
 **问题**: `XCircle` 和 `ChevronDown` 已导入但未使用。
 
@@ -564,14 +564,14 @@ import {
 
 | 文件 | 问题数 | 优先级 |
 |------|--------|--------|
-| [ShadowStatus.tsx](file:///workspace/shadow-clone/src/components/shadow/ShadowStatus.tsx) | 1 | P0 |
-| [db.ts](file:///workspace/shadow-clone/src/lib/db.ts) | 2 | P0 |
-| [TaskForm.tsx](file:///workspace/shadow-clone/src/components/tasks/TaskForm.tsx) | 2 | P0/P1 |
-| [gitlab/route.ts](file:///workspace/shadow-clone/src/app/api/gitlab/route.ts) | 1 | P0 |
-| [KanbanBoard.tsx](file:///workspace/shadow-clone/src/components/board/KanbanBoard.tsx) | 2 | P1 |
-| [TaskCard.tsx](file:///workspace/shadow-clone/src/components/tasks/TaskCard.tsx) | 2 | P1 |
-| [AppContext.tsx](file:///workspace/shadow-clone/src/context/AppContext.tsx) | 2 | P1 |
-| [tasks/route.ts](file:///workspace/shadow-clone/src/app/api/tasks/route.ts) | 2 | P1 |
+| [ShadowStatus.tsx](file:///workspace/ShadowMe/src/components/shadow/ShadowStatus.tsx) | 1 | P0 |
+| [db.ts](file:///workspace/ShadowMe/src/lib/db.ts) | 2 | P0 |
+| [TaskForm.tsx](file:///workspace/ShadowMe/src/components/tasks/TaskForm.tsx) | 2 | P0/P1 |
+| [gitlab/route.ts](file:///workspace/ShadowMe/src/app/api/gitlab/route.ts) | 1 | P0 |
+| [KanbanBoard.tsx](file:///workspace/ShadowMe/src/components/board/KanbanBoard.tsx) | 2 | P1 |
+| [TaskCard.tsx](file:///workspace/ShadowMe/src/components/tasks/TaskCard.tsx) | 2 | P1 |
+| [AppContext.tsx](file:///workspace/ShadowMe/src/context/AppContext.tsx) | 2 | P1 |
+| [tasks/route.ts](file:///workspace/ShadowMe/src/app/api/tasks/route.ts) | 2 | P1 |
 | 多个 API 路由 | 1 (共享) | P1 |
 | 多个组件 | 1 (共享) | P2 |
 

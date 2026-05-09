@@ -57,7 +57,7 @@ export async function POST(
     db.prepare(`
       INSERT INTO logs (task_id, action, actor, details, created_at)
       VALUES (?, ?, ?, ?, ?)
-    `).run(id, 'taken', 'shadow-clone', JSON.stringify({ source: 'manual' }), now);
+    `).run(id, 'taken', 'ShadowMe', JSON.stringify({ source: 'manual' }), now);
 
     const updated = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
 

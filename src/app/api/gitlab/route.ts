@@ -108,8 +108,8 @@ async function createMergeRequest(
     {
       source_branch: params.source_branch || `shadow-${Date.now()}`,
       target_branch: params.target_branch || 'main',
-      title: params.title || 'Shadow Clone Auto MR',
-      description: params.description || 'Created by Shadow Clone',
+      title: params.title || 'ShadowMe Auto MR',
+      description: params.description || 'Created by ShadowMe',
     },
     {
       headers: { 'PRIVATE-TOKEN': config.token },
@@ -157,7 +157,7 @@ async function commitFile(
     `${config.url}/api/v4/projects/${encodeURIComponent(projectId)}/repository/commits`,
     {
       branch: params.branch || 'main',
-      commit_message: params.commit_message || 'Shadow Clone commit',
+      commit_message: params.commit_message || 'ShadowMe commit',
       actions: params.actions || [],
     },
     {
@@ -182,7 +182,7 @@ async function createFile(
     {
       branch: params.branch || 'main',
       content: params.content || '',
-      commit_message: params.commit_message || 'Add file from Shadow Clone',
+      commit_message: params.commit_message || 'Add file from ShadowMe',
     },
     {
       headers: { 'PRIVATE-TOKEN': config.token },

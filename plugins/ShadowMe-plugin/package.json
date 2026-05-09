@@ -1,7 +1,7 @@
 {
-  "name": "shadow-clone-plugin",
+  "name": "ShadowMe-plugin",
   "version": "1.0.0",
-  "description": "Shadow Clone - Claude Code integration plugin",
+  "description": "ShadowMe - Claude Code integration plugin",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

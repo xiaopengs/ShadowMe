@@ -1,4 +1,4 @@
-# Shadow Clone Plugin for Claude Code
+# ShadowMe Plugin for Claude Code
 
 Claude Code 插件，让影子分身能够接收看板任务、自动执行并返回结果。
 
@@ -13,7 +13,7 @@ Claude Code 插件，让影子分身能够接收看板任务、自动执行并�
 ## 安装
 
 ```bash
-cd plugins/shadow-clone-plugin
+cd plugins/ShadowMe-plugin
 npm install
 ```
 

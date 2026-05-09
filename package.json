@@ -1,8 +1,8 @@
 {
-  "name": "shadow-clone",
+  "name": "ShadowMe",
   "version": "1.0.0",
   "private": true,
-  "description": "智能影子分身协作看板 - Shadow Clone",
+  "description": "智能影子分身协作看板 - ShadowMe",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

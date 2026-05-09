@@ -1,4 +1,4 @@
-# Shadow Clone 架构设计
+# ShadowMe 架构设计
 
 ## 1. 系统架构总览
 
@@ -346,7 +346,7 @@ const WSEvents = {
 ### 6.1 插件结构
 
 ```
-shadow-clone-plugin/
+ShadowMe-plugin/
 ├── src/
 │   ├── index.ts          # 插件入口
 │   ├── commands/         # 命令处理

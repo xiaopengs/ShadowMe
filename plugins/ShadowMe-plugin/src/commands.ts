@@ -10,7 +10,7 @@ class ShadowCommands {
 
   async help(): Promise<void> {
     console.log(`
-🔮 Shadow Clone Plugin Commands
+🔮 ShadowMe Plugin Commands
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /shadow help          - Show this help message
@@ -30,7 +30,7 @@ class ShadowCommands {
     const inProgressTasks = tasks.filter(t => t.status === 'in_progress');
 
     console.log(`
-🟢 Shadow Clone Status
+🟢 ShadowMe Status
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Connection: ${this.plugin['isConnected'] ? 'Connected' : 'Disconnected'}
   Pending Tasks: ${pendingTasks.length}

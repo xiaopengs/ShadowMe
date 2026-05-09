@@ -26,11 +26,11 @@ class ShadowClonePlugin extends EventEmitter {
   }
 
   async initialize(): Promise<void> {
-    console.log('🔮 Shadow Clone Plugin initializing...');
+    console.log('🔮 ShadowMe Plugin initializing...');
     await this.connectWebSocket();
     this.startPolling();
     this.startHeartbeat();
-    console.log('✅ Shadow Clone Plugin initialized');
+    console.log('✅ ShadowMe Plugin initialized');
   }
 
   private async connectWebSocket(): Promise<void> {
@@ -278,7 +278,7 @@ class ShadowClonePlugin extends EventEmitter {
     if (this.ws) {
       this.ws.close();
     }
-    console.log('🔮 Shadow Clone Plugin destroyed');
+    console.log('🔮 ShadowMe Plugin destroyed');
   }
 }
 

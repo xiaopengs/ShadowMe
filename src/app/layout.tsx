@@ -17,10 +17,10 @@ const notoSansSC = Noto_Sans_SC({
 });
 
 export const metadata: Metadata = {
-  title: "Shadow Clone | 影子分身协作看板",
+  title: "ShadowMe | 影子分身协作看板",
   description: "智能影子分身协作系统 - 当主角不在时，影子替他战斗",
   keywords: ["影子分身", "协作看板", "Claude Code", "GitLab", "AI助手"],
-  authors: [{ name: "Shadow Clone Team" }],
+  authors: [{ name: "ShadowMe Team" }],
   icons: {
     icon: "/favicon.ico",
   },

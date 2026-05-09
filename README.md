@@ -1,14 +1,14 @@
-# Shadow Clone
+# ShadowMe
 
 <div align="center">
 
-![Shadow Clone Logo](https://img.shields.io/badge/Shadow%20Clone-影子分身-29C16A?style=for-the-badge&logo=ghost&logoColor=white)
+![ShadowMe Logo](https://img.shields.io/badge/Shadow%20Clone-影子分身-29C16A?style=for-the-badge&logo=ghost&logoColor=white)
 
 ### 当主角不在时，影子替他战斗
 
 ---
 
-> **"Shadow Clone 是一个智能化的个人影子分身协作系统。核心价值在于：当项目负责人不在或忙碌时，协作方可以通过这个看板提交任务需求，影子分身（基于 Claude Code）会自动接收任务、在本地工作目录执行、并将结果返回给看板，形成一个闭环的自动化协作流程。"**
+> **"ShadowMe 是一个智能化的个人影子分身协作系统。核心价值在于：当项目负责人不在或忙碌时，协作方可以通过这个看板提交任务需求，影子分身（基于 Claude Code）会自动接收任务、在本地工作目录执行、并将结果返回给看板，形成一个闭环的自动化协作流程。"**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -46,8 +46,8 @@
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/yourusername/shadow-clone.git
-cd shadow-clone
+git clone https://github.com/yourusername/ShadowMe.git
+cd ShadowMe
 
 # 2. 安装依赖
 npm install
@@ -134,7 +134,7 @@ WORKING_DIRECTORY=/path/to/your/work
 
 ```bash
 # 进入插件目录
-cd plugins/shadow-clone-plugin
+cd plugins/ShadowMe-plugin
 
 # 安装插件依赖
 npm install
@@ -201,7 +201,7 @@ vim .env
 ## 📁 项目结构
 
 ```
-shadow-clone/
+ShadowMe/
 ├── src/
 │   ├── app/                    # Next.js App Router
 │   │   ├── api/               # API 路由
@@ -222,7 +222,7 @@ shadow-clone/
 │   ├── lib/                   # 工具库
 │   └── types/                 # TypeScript 类型
 ├── plugins/
-│   └── shadow-clone-plugin/   # Claude Code 插件
+│   └── ShadowMe-plugin/   # Claude Code 插件
 ├── docs/                      # 文档
 └── data/                      # SQLite 数据库（自动生成）
 ```
@@ -294,7 +294,7 @@ shadow-clone/
 ### 安装插件
 
 ```bash
-cd plugins/shadow-clone-plugin
+cd plugins/ShadowMe-plugin
 npm install
 cp .env.example .env
 vim .env  # 编辑配置
@@ -388,7 +388,7 @@ MIT License - 详见 [LICENSE](LICENSE) 文件
 
 <div align="center">
 
-**Made with ❤️ by Shadow Clone Team**
+**Made with ❤️ by ShadowMe Team**
 
 *"当主角不在时，影子替他战斗。"*
 
