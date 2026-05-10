@@ -201,8 +201,11 @@ npm start
 
 #### 5.3 添加 ShadowMe 插件
 
-1. 点击 **"Marketplaces"** 标签
-2. 添加本地插件目录：
+1. 在 Claude Code 对话框中输入 `/plugins` 并发送
+
+2. 会打开 **Manage plugins** 界面，点击 **Marketplaces** 标签
+
+3. 添加本地插件目录：
 
    **Mac / Linux 用户：**
    ```
@@ -216,7 +219,9 @@ npm start
    
    **新手提示**：路径要改成你实际放代码的地方！比如你的代码在 D 盘，就改成 `D:\你的文件夹\ShadowMe\plugins\ShadowMe-plugin`
 
-3. 或者直接用命令启动（推荐新手）：
+4. 添加完路径后，刷新一下（点击刷新图标），然后回到 **Plugins** 标签，就会看到 shadowme 插件
+
+5. 或者直接用命令启动（推荐新手）：
 
    **Mac / Linux：**
    ```bash
@@ -235,9 +240,12 @@ npm start
 
 #### 5.4 安装插件
 
-- 在插件列表找到 **shadowme**
+- 在 **Plugins** 标签的 "Available plugins" 下面找到 **shadowme**
 - 点击 **Install**
-- 选择 **"Install for this project"**（推荐）
+- 选择安装范围：
+  - **Install for you**：所有项目都能用（用户范围）
+  - **Install for this project**：只用于当前项目（推荐）
+  - **Install locally**：只在这个仓库用
 
 ---
 
@@ -433,12 +441,15 @@ ShadowMe/
 **问题**：Claude Code 里看不到 shadowme 插件
 
 **解决方案**：
-1. 确认路径输对了，不要写错目录
-2. 重新加载插件：
+1. 确认是输入了 `/plugins` 而不是别的，这样会打开 "Manage plugins" 界面
+2. 在 "Marketplaces" 标签里添加插件路径，不是在 "Plugins" 标签里
+3. 确认路径输对了，不要写错目录
+4. 刷新一下 marketplaces（点击刷新图标）
+5. 重新加载插件：
    ```
    /reload-plugins
    ```
-3. 重启 Claude Code 或 VS Code
+6. 重启 Claude Code 或 VS Code
 
 ### 4. Windows 路径怎么写？
 
@@ -447,7 +458,7 @@ ShadowMe/
 **解决方案**：
 - Windows 路径用反斜杠 `\`，比如 `D:\AICoding\trea\ShadowMe`
 - 如果路径有空格，用引号括起来，比如 `"D:\My Projects\ShadowMe"`
-- 在 Claude Code 的 Marketplaces 里直接粘贴完整路径就行
+- 在 Marketplaces 里直接粘贴完整路径就行
 - 在命令行里，PowerShell 和 CMD 都支持 Windows 路径
 
 **举个例子**：
