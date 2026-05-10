@@ -201,32 +201,9 @@ npm start
 
 #### 5.3 添加 ShadowMe 插件
 
-现在有两种方式，推荐用方式一最简单：
+现在有两种方式，推荐用方式一：
 
-**方式一：直接用命令行加载（最简单，不用配置）**
-
-1. 在 VS Code 终端里直接运行：
-
-   **Mac / Linux：**
-   ```bash
-   claude --plugin-dir /workspace/ShadowMe/plugins/ShadowMe-plugin
-   ```
-
-   **Windows（PowerShell）：**
-   ```powershell
-   claude --plugin-dir D:\AICoding\trea\ShadowMe\plugins\ShadowMe-plugin
-   ```
-
-   **Windows（CMD）：**
-   ```cmd
-   claude --plugin-dir "D:\AICoding\trea\ShadowMe\plugins\ShadowMe-plugin"
-   ```
-
-2. 然后就可以直接用 `/shadowme:status` 等技能了！
-
----
-
-**方式二：通过 UI marketplace 添加（如果需要）**
+**方式一：通过 UI marketplace 添加（推荐，你现在用的方法）**
 
 1. 在 Claude Code 对话框中输入 `/plugins` 并发送
 
@@ -247,6 +224,29 @@ npm start
    **新手提示**：这次是项目根目录，不是插件子目录！因为 marketplace.json 在根目录里！
 
 4. 添加完路径后，刷新一下（点击刷新图标），然后回到 **Plugins** 标签，就会看到 shadowme 插件
+
+---
+
+**方式二：直接用命令行加载（备用）**
+
+1. 在 VS Code 终端里直接运行：
+
+   **Mac / Linux：**
+   ```bash
+   claude --plugin-dir /workspace/ShadowMe/plugins/ShadowMe-plugin
+   ```
+
+   **Windows（PowerShell）：**
+   ```powershell
+   claude --plugin-dir D:\AICoding\trea\ShadowMe\plugins\ShadowMe-plugin
+   ```
+
+   **Windows（CMD）：**
+   ```cmd
+   claude --plugin-dir "D:\AICoding\trea\ShadowMe\plugins\ShadowMe-plugin"
+   ```
+
+2. 然后就可以直接用 `/shadowme:status` 等技能了！
 
 #### 5.4 安装插件
 
