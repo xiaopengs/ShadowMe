@@ -6,9 +6,6 @@
     "name": "ShadowMe Team"
   },
   "homepage": "https://github.com/xiaopengs/ShadowMe",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/xiaopengs/ShadowMe.git"
-  },
+  "repository": "https://github.com/xiaopengs/ShadowMe.git",
   "license": "MIT"
 }
