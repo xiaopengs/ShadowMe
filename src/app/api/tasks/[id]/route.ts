@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDatabase } from '@/lib/db';
+import { get, run } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import type { Task, TaskStatus } from '@/types';
 
@@ -32,8 +32,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const db = getDatabase();
-    const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+    const row = await get('SELECT * FROM tasks WHERE id = ?', [id]);
 
     if (!row) {
       apiLogger.warn('Task not found', { taskId: id, operation: 'GET' });
@@ -56,8 +55,7 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const db = getDatabase();
-    const existing = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+    const existing = await get('SELECT * FROM tasks WHERE id = ?', [id]);
 
     if (!existing) {
       apiLogger.warn('Task not found for update', { taskId: id, operation: 'PATCH' });
@@ -112,14 +110,14 @@ export async function PATCH(
     values.push(new Date().toISOString());
     values.push(id);
 
-    db.prepare(`UPDATE tasks SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+    await run(`UPDATE tasks SET ${updates.join(', ')} WHERE id = ?`, values);
 
-    db.prepare(`
+    await run(`
       INSERT INTO logs (task_id, action, actor, details, created_at)
       VALUES (?, ?, ?, ?, ?)
-    `).run(id, 'updated', body.updatedBy || 'system', JSON.stringify(body), new Date().toISOString());
+    `, [id, 'updated', body.updatedBy || 'system', JSON.stringify(body), new Date().toISOString()]);
 
-    const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+    const row = await get('SELECT * FROM tasks WHERE id = ?', [id]);
 
     apiLogger.info('Task updated', { taskId: id, updates: Object.keys(body) });
     return NextResponse.json(rowToTask(row));
@@ -135,16 +133,15 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const db = getDatabase();
 
-    const existing = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+    const existing = await get('SELECT * FROM tasks WHERE id = ?', [id]);
     if (!existing) {
       apiLogger.warn('Task not found for delete', { taskId: id, operation: 'DELETE' });
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
-    db.prepare('DELETE FROM tasks WHERE id = ?').run(id);
-    db.prepare('DELETE FROM logs WHERE task_id = ?').run(id);
+    await run('DELETE FROM tasks WHERE id = ?', [id]);
+    await run('DELETE FROM logs WHERE task_id = ?', [id]);
 
     apiLogger.info('Task deleted', { taskId: id });
     return NextResponse.json({ success: true });

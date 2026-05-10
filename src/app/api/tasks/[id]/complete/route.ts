@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDatabase } from '@/lib/db';
+import { get, run } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import type { Task, TaskStatus } from '@/types';
 
@@ -35,9 +35,7 @@ export async function POST(
     const body = await request.json();
     const { result, summary } = body;
 
-    const db = getDatabase();
-
-    const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as any;
+    const row = await get('SELECT * FROM tasks WHERE id = ?', [id]) as any;
     if (!row) {
       apiLogger.warn('Task not found for completion', { taskId: id, operation: 'POST' });
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
@@ -55,24 +53,24 @@ export async function POST(
       summary: summary || '任务已完成'
     };
 
-    db.prepare(`
+    await run(`
       UPDATE tasks
       SET status = 'completed', result = ?, completed_at = ?, updated_at = ?
       WHERE id = ?
-    `).run(JSON.stringify(resultData), now, now, id);
+    `, [JSON.stringify(resultData), now, now, id]);
 
-    db.prepare(`
+    await run(`
       UPDATE shadow_status
       SET status = 'online', current_task_id = NULL, last_heartbeat = ?
       WHERE id = 'shadow-1'
-    `).run(now);
+    `, [now]);
 
-    db.prepare(`
+    await run(`
       INSERT INTO logs (task_id, action, actor, details, created_at)
       VALUES (?, ?, ?, ?, ?)
-    `).run(id, 'completed', 'ShadowMe', JSON.stringify({ result: resultData }), now);
+    `, [id, 'completed', 'ShadowMe', JSON.stringify({ result: resultData }), now]);
 
-    const updated = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+    const updated = await get('SELECT * FROM tasks WHERE id = ?', [id]);
 
     apiLogger.info('Task completed', { taskId: id, resultType: resultData.type });
     return NextResponse.json(rowToTask(updated));

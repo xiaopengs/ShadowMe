@@ -1,29 +1,20 @@
-/**
- * Claude Code (CC) Communication Protocol
- * Defines message types and handlers for CC plugin communication
- */
-
-import { getDatabase } from './db';
+import { getDatabase, get, run } from './db';
 import { broadcastToChannel, type SSEChannel } from './sse-manager';
 import { logger } from './logger';
 import { v4 as uuidv4 } from 'uuid';
 
 const ccLogger = logger.child({ module: 'cc-protocol' });
 
-// ============================================================================
-// Message Type Definitions
-// ============================================================================
-
-export type CCMessageType = 
-  | 'task.assign'      // Assign task to CC
-  | 'task.progress'    // CC reports progress
-  | 'task.complete'    // CC completes task
-  | 'task.error'       // CC encounters error
-  | 'task.log'         // CC terminal log output
-  | 'git.commit'       // CC commits code
-  | 'git.mr_created'   // CC creates MR
-  | 'sync.heartbeat'   // CC heartbeat
-  | 'sync.status';     // CC status change
+export type CCMessageType =
+  | 'task.assign'
+  | 'task.progress'
+  | 'task.complete'
+  | 'task.error'
+  | 'task.log'
+  | 'git.commit'
+  | 'git.mr_created'
+  | 'sync.heartbeat'
+  | 'sync.status';
 
 export interface CCBaseMessage {
   type: CCMessageType;
@@ -44,7 +35,7 @@ export interface CCTaskAssignMessage extends CCBaseMessage {
 export interface CCTaskProgressMessage extends CCBaseMessage {
   type: 'task.progress';
   taskId: string;
-  progress: number; // 0-100
+  progress: number;
   message?: string;
   logs?: string[];
 }
@@ -118,13 +109,6 @@ export type CCMessage =
   | CCSyncHeartbeatMessage
   | CCSyncStatusMessage;
 
-// ============================================================================
-// Message Handlers
-// ============================================================================
-
-/**
- * Process incoming CC message
- */
 export async function processCCMessage(message: CCMessage): Promise<{
   success: boolean;
   error?: string;
@@ -134,83 +118,74 @@ export async function processCCMessage(message: CCMessage): Promise<{
   try {
     switch (message.type) {
       case 'task.assign':
-        return handleTaskAssign(message);
-      
+        return await handleTaskAssign(message);
+
       case 'task.progress':
-        return handleTaskProgress(message);
-      
+        return await handleTaskProgress(message);
+
       case 'task.complete':
-        return handleTaskComplete(message);
-      
+        return await handleTaskComplete(message);
+
       case 'task.error':
-        return handleTaskError(message);
-      
+        return await handleTaskError(message);
+
       case 'task.log':
-        return handleTaskLog(message);
-      
+        return await handleTaskLog(message);
+
       case 'git.commit':
-        return handleGitCommit(message);
-      
+        return await handleGitCommit(message);
+
       case 'git.mr_created':
-        return handleGitMRCreated(message);
-      
+        return await handleGitMRCreated(message);
+
       case 'sync.heartbeat':
-        return handleHeartbeat(message);
-      
+        return await handleHeartbeat(message);
+
       case 'sync.status':
-        return handleStatusChange(message);
-      
+        return await handleStatusChange(message);
+
       default:
         return { success: false, error: `Unknown message type: ${(message as CCBaseMessage).type}` };
     }
   } catch (error) {
     ccLogger.error('Error processing CC message', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
 }
 
-/**
- * Handle task assignment acknowledgment from CC
- */
-function handleTaskAssign(message: CCTaskAssignMessage): { success: boolean; error?: string } {
-  const db = getDatabase();
-  
-  // Update task status to in_progress
+async function handleTaskAssign(message: CCTaskAssignMessage): Promise<{ success: boolean; error?: string }> {
   const now = new Date().toISOString();
-  db.prepare(`
-    UPDATE tasks 
-    SET status = 'in_progress', 
+  await run(`
+    UPDATE tasks
+    SET status = 'in_progress',
         started_at = COALESCE(started_at, ?),
         updated_at = ?
     WHERE id = ?
-  `).run(now, now, message.taskId);
+  `, [now, now, message.taskId]);
 
-  // Update shadow status to busy
-  db.prepare(`
-    UPDATE shadow_status 
-    SET status = 'busy', 
+  await run(`
+    UPDATE shadow_status
+    SET status = 'busy',
         current_task_id = ?,
         last_heartbeat = ?
     WHERE id = 'shadow-1'
-  `).run(message.taskId, now);
+  `, [message.taskId, now]);
 
-  // Add system message
   const msgId = uuidv4();
-  db.prepare(`
+  await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
     VALUES (?, ?, 'system', ?, ?)
-  `).run(msgId, message.taskId, `Task assigned to Claude Code at ${new Date(message.timestamp).toLocaleString()}`, now);
+  `, [msgId, message.taskId, `Task assigned to Claude Code at ${new Date(message.timestamp).toLocaleString()}`, now]);
 
-  // Broadcast updates
   broadcastToChannel('task', 'task:updated', {
     taskId: message.taskId,
     status: 'in_progress',
     updatedAt: now,
   });
-  
+
   broadcastToChannel('shadow', 'shadow:status', {
     status: 'busy',
     currentTaskId: message.taskId,
@@ -221,34 +196,27 @@ function handleTaskAssign(message: CCTaskAssignMessage): { success: boolean; err
   return { success: true };
 }
 
-/**
- * Handle progress update from CC
- */
-function handleTaskProgress(message: CCTaskProgressMessage): { success: boolean; error?: string } {
-  const db = getDatabase();
+async function handleTaskProgress(message: CCTaskProgressMessage): Promise<{ success: boolean; error?: string }> {
   const now = new Date().toISOString();
 
-  // Add log messages if provided
   if (message.logs && message.logs.length > 0) {
     for (const log of message.logs) {
       const msgId = uuidv4();
-      db.prepare(`
+      await run(`
         INSERT INTO task_messages (id, task_id, type, content, created_at)
         VALUES (?, ?, 'claude', ?, ?)
-      `).run(msgId, message.taskId, log, now);
+      `, [msgId, message.taskId, log, now]);
     }
   }
 
-  // Update task with progress info (could extend task table with progress field)
   if (message.message) {
     const msgId = uuidv4();
-    db.prepare(`
+    await run(`
       INSERT INTO task_messages (id, task_id, type, content, created_at)
       VALUES (?, ?, 'claude', ?, ?)
-    `).run(msgId, message.taskId, `[Progress ${message.progress}%] ${message.message}`, now);
+    `, [msgId, message.taskId, `[Progress ${message.progress}%] ${message.message}`, now]);
   }
 
-  // Broadcast update
   broadcastToChannel('task', 'task:progress', {
     taskId: message.taskId,
     progress: message.progress,
@@ -266,38 +234,31 @@ function handleTaskProgress(message: CCTaskProgressMessage): { success: boolean;
   return { success: true };
 }
 
-/**
- * Handle task completion from CC
- */
-function handleTaskComplete(message: CCTaskCompleteMessage): { success: boolean; error?: string } {
-  const db = getDatabase();
+async function handleTaskComplete(message: CCTaskCompleteMessage): Promise<{ success: boolean; error?: string }> {
   const now = new Date().toISOString();
 
-  // Update task status
-  db.prepare(`
-    UPDATE tasks 
-    SET status = 'completed', 
+  await run(`
+    UPDATE tasks
+    SET status = 'completed',
         completed_at = ?,
         result = ?,
         updated_at = ?
     WHERE id = ?
-  `).run(
-    now, 
+  `, [
+    now,
     JSON.stringify(message.result),
     now,
     message.taskId
-  );
+  ]);
 
-  // Update shadow status back to online
-  db.prepare(`
-    UPDATE shadow_status 
-    SET status = 'online', 
+  await run(`
+    UPDATE shadow_status
+    SET status = 'online',
         current_task_id = NULL,
         last_heartbeat = ?
     WHERE id = 'shadow-1'
-  `).run(now);
+  `, [now]);
 
-  // Add completion message
   const msgId = uuidv4();
   let completionText = `Task completed successfully at ${new Date(message.timestamp).toLocaleString()}\n\n`;
   completionText += `Result Type: ${message.result.type}\n`;
@@ -309,12 +270,11 @@ function handleTaskComplete(message: CCTaskCompleteMessage): { success: boolean;
   }
   completionText += `\n${message.result.summary}`;
 
-  db.prepare(`
+  await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
     VALUES (?, ?, 'system', ?, ?)
-  `).run(msgId, message.taskId, completionText, now);
+  `, [msgId, message.taskId, completionText, now]);
 
-  // Broadcast updates
   broadcastToChannel('task', 'task:completed', {
     taskId: message.taskId,
     result: message.result,
@@ -335,42 +295,33 @@ function handleTaskComplete(message: CCTaskCompleteMessage): { success: boolean;
   return { success: true };
 }
 
-/**
- * Handle task error from CC
- */
-function handleTaskError(message: CCTaskErrorMessage): { success: boolean; error?: string } {
-  const db = getDatabase();
+async function handleTaskError(message: CCTaskErrorMessage): Promise<{ success: boolean; error?: string }> {
   const now = new Date().toISOString();
 
-  // Update task status if recoverable
   if (message.recoverable) {
-    // Keep as in_progress, just log the error
-    db.prepare(`
+    await run(`
       UPDATE tasks SET updated_at = ? WHERE id = ?
-    `).run(now, message.taskId);
+    `, [now, message.taskId]);
   } else {
-    // Mark as needs_feedback
-    db.prepare(`
+    await run(`
       UPDATE tasks SET status = 'needs_feedback', updated_at = ? WHERE id = ?
-    `).run(now, message.taskId);
+    `, [now, message.taskId]);
   }
 
-  // Add error message
   const msgId = uuidv4();
   let errorText = `⚠️ Error: ${message.error}\n\n`;
   if (message.stack) {
     errorText += `Stack trace:\n${message.stack}\n\n`;
   }
-  errorText += message.recoverable 
-    ? 'The task will continue processing...' 
+  errorText += message.recoverable
+    ? 'The task will continue processing...'
     : 'This error requires attention.';
 
-  db.prepare(`
+  await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
     VALUES (?, ?, 'system', ?, ?)
-  `).run(msgId, message.taskId, errorText, now);
+  `, [msgId, message.taskId, errorText, now]);
 
-  // Broadcast error
   broadcastToChannel('task', 'task:error', {
     taskId: message.taskId,
     error: message.error,
@@ -382,25 +333,19 @@ function handleTaskError(message: CCTaskErrorMessage): { success: boolean; error
   return { success: true };
 }
 
-/**
- * Handle log output from CC
- */
-function handleTaskLog(message: CCTaskLogMessage): { success: boolean; error?: string } {
-  const db = getDatabase();
+async function handleTaskLog(message: CCTaskLogMessage): Promise<{ success: boolean; error?: string }> {
   const now = new Date().toISOString();
 
-  // Add log to task_messages
   const msgId = uuidv4();
-  const prefix = message.level === 'error' ? '❌' : 
-                  message.level === 'warn' ? '⚠️' : 
+  const prefix = message.level === 'error' ? '❌' :
+                  message.level === 'warn' ? '⚠️' :
                   message.level === 'debug' ? '🔍' : '📝';
-  
-  db.prepare(`
+
+  await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
     VALUES (?, ?, 'claude', ?, ?)
-  `).run(msgId, message.taskId, `${prefix} ${message.log}`, now);
+  `, [msgId, message.taskId, `${prefix} ${message.log}`, now]);
 
-  // Broadcast log (throttled on client side)
   broadcastToChannel('messages', 'message:log', {
     taskId: message.taskId,
     level: message.level,
@@ -411,26 +356,20 @@ function handleTaskLog(message: CCTaskLogMessage): { success: boolean; error?: s
   return { success: true };
 }
 
-/**
- * Handle git commit from CC
- */
-function handleGitCommit(message: CCGitCommitMessage): { success: boolean; error?: string } {
-  const db = getDatabase();
+async function handleGitCommit(message: CCGitCommitMessage): Promise<{ success: boolean; error?: string }> {
   const now = new Date().toISOString();
 
-  // Add commit message
   const msgId = uuidv4();
   let commitText = `📦 Commit: ${message.commitSha.slice(0, 8)}\n`;
   commitText += `Branch: ${message.branch}\n`;
   commitText += `Files: ${message.files.length}\n`;
   commitText += `\n${message.message}`;
 
-  db.prepare(`
+  await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
     VALUES (?, ?, 'system', ?, ?)
-  `).run(msgId, message.taskId, commitText, now);
+  `, [msgId, message.taskId, commitText, now]);
 
-  // Broadcast commit
   broadcastToChannel('task', 'task:commit', {
     taskId: message.taskId,
     commitSha: message.commitSha,
@@ -442,31 +381,25 @@ function handleGitCommit(message: CCGitCommitMessage): { success: boolean; error
   return { success: true };
 }
 
-/**
- * Handle MR creation from CC
- */
-function handleGitMRCreated(message: CCGitMRCreatedMessage): { success: boolean; error?: string } {
-  const db = getDatabase();
+async function handleGitMRCreated(message: CCGitMRCreatedMessage): Promise<{ success: boolean; error?: string }> {
   const now = new Date().toISOString();
 
-  // Add MR message
   const msgId = uuidv4();
   let mrText = `🔀 Merge Request Created\n`;
   mrText += `MR ID: ${message.mrId}\n`;
   mrText += `URL: ${message.mrUrl}\n`;
   mrText += `${message.sourceBranch} → ${message.targetBranch}`;
 
-  db.prepare(`
+  await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
     VALUES (?, ?, 'system', ?, ?)
-  `).run(msgId, message.taskId, mrText, now);
+  `, [msgId, message.taskId, mrText, now]);
 
-  // Update task result
-  db.prepare(`
-    UPDATE tasks 
+  await run(`
+    UPDATE tasks
     SET result = ?, updated_at = ?
     WHERE id = ?
-  `).run(
+  `, [
     JSON.stringify({
       type: 'merge_request',
       url: message.mrUrl,
@@ -475,9 +408,8 @@ function handleGitMRCreated(message: CCGitMRCreatedMessage): { success: boolean;
     }),
     now,
     message.taskId
-  );
+  ]);
 
-  // Broadcast MR
   broadcastToChannel('task', 'task:mr_created', {
     taskId: message.taskId,
     mrUrl: message.mrUrl,
@@ -490,29 +422,23 @@ function handleGitMRCreated(message: CCGitMRCreatedMessage): { success: boolean;
   return { success: true };
 }
 
-/**
- * Handle heartbeat from CC
- */
-function handleHeartbeat(message: CCSyncHeartbeatMessage): { success: boolean; error?: string } {
-  const db = getDatabase();
+async function handleHeartbeat(message: CCSyncHeartbeatMessage): Promise<{ success: boolean; error?: string }> {
   const now = new Date().toISOString();
 
-  // Update shadow status
-  db.prepare(`
-    UPDATE shadow_status 
+  await run(`
+    UPDATE shadow_status
     SET status = ?,
         current_task_id = ?,
         capabilities = ?,
         last_heartbeat = ?
     WHERE id = 'shadow-1'
-  `).run(
+  `, [
     message.status,
     message.currentTaskId || null,
     JSON.stringify(message.capabilities),
     now
-  );
+  ]);
 
-  // Broadcast status
   broadcastToChannel('shadow', 'shadow:heartbeat', {
     status: message.status,
     currentTaskId: message.currentTaskId,
@@ -524,43 +450,36 @@ function handleHeartbeat(message: CCSyncHeartbeatMessage): { success: boolean; e
   return { success: true };
 }
 
-/**
- * Handle status change from CC
- */
-function handleStatusChange(message: CCSyncStatusMessage): { success: boolean; error?: string } {
-  const db = getDatabase();
+async function handleStatusChange(message: CCSyncStatusMessage): Promise<{ success: boolean; error?: string }> {
   const now = new Date().toISOString();
 
-  // Update shadow status
-  db.prepare(`
-    UPDATE shadow_status 
+  await run(`
+    UPDATE shadow_status
     SET status = ?,
         current_task_id = ?,
         last_heartbeat = ?
     WHERE id = 'shadow-1'
-  `).run(
+  `, [
     message.status,
     message.currentTaskId || null,
     now
-  );
+  ]);
 
-  // Add system message if provided
   if (message.message) {
-    // Find a task to attach this to, or skip
-    const currentTask = db.prepare(
-      'SELECT id FROM tasks WHERE status = ? ORDER BY updated_at DESC LIMIT 1'
-    ).get('in_progress') as { id: string } | undefined;
-    
+    const currentTask = await get(
+      'SELECT id FROM tasks WHERE status = ? ORDER BY updated_at DESC LIMIT 1',
+      ['in_progress']
+    ) as { id: string } | undefined;
+
     if (currentTask) {
       const msgId = uuidv4();
-      db.prepare(`
+      await run(`
         INSERT INTO task_messages (id, task_id, type, content, created_at)
         VALUES (?, ?, 'system', ?, ?)
-      `).run(msgId, currentTask.id, `🔔 ${message.message}`, now);
+      `, [msgId, currentTask.id, `🔔 ${message.message}`, now]);
     }
   }
 
-  // Broadcast status
   broadcastToChannel('shadow', 'shadow:status', {
     status: message.status,
     currentTaskId: message.currentTaskId,
@@ -572,13 +491,6 @@ function handleStatusChange(message: CCSyncStatusMessage): { success: boolean; e
   return { success: true };
 }
 
-// ============================================================================
-// Outbound Message Creators
-// ============================================================================
-
-/**
- * Create a task assignment message to send to CC
- */
 export function createTaskAssignMessage(
   taskId: string,
   title: string,
@@ -600,34 +512,26 @@ export function createTaskAssignMessage(
   };
 }
 
-/**
- * Validate incoming message structure
- */
 export function validateCCMessage(data: unknown): data is CCMessage {
   if (!data || typeof data !== 'object') return false;
-  
+
   const msg = data as Record<string, unknown>;
-  
-  // Check required base fields
+
   if (typeof msg.type !== 'string') return false;
   if (typeof msg.timestamp !== 'string') return false;
   if (typeof msg.messageId !== 'string') return false;
   if (typeof msg.senderId !== 'string') return false;
-  
-  // Validate known message types
+
   const validTypes: CCMessageType[] = [
     'task.assign', 'task.progress', 'task.complete', 'task.error', 'task.log',
     'git.commit', 'git.mr_created', 'sync.heartbeat', 'sync.status'
   ];
-  
+
   if (!validTypes.includes(msg.type as CCMessageType)) return false;
-  
+
   return true;
 }
 
-/**
- * Get CC protocol version
- */
 export function getCCProtocolVersion(): string {
   return '1.0.0';
 }

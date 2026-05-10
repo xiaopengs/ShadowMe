@@ -1,18 +1,9 @@
-/**
- * ShadowMe Test Database Helper
- * 
- * Provides an in-memory SQLite database for testing purposes.
- * Mocks the database module to avoid file system operations.
- */
+import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
 
-import DatabaseLib from 'better-sqlite3';
-import path from 'path';
+export async function createTestDatabase(): Promise<SqlJsDatabase> {
+  const SQL = await initSqlJs();
+  const db = new SQL.Database();
 
-// Create in-memory database for testing
-export function createTestDatabase(): DatabaseLib.Database {
-  const db = new DatabaseLib(':memory:');
-  
-  // Create tables matching production schema
   db.exec(`
     CREATE TABLE IF NOT EXISTS tasks (
       id TEXT PRIMARY KEY,
@@ -72,24 +63,25 @@ export function createTestDatabase(): DatabaseLib.Database {
     CREATE INDEX IF NOT EXISTS idx_logs_task_id ON logs(task_id);
     CREATE INDEX IF NOT EXISTS idx_task_messages_task_id ON task_messages(task_id);
   `);
-  
-  // Seed default shadow status
-  db.prepare(`
+
+  const stmt = db.prepare(`
     INSERT INTO shadow_status (id, name, status, capabilities, auto_take_tasks, last_heartbeat)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(
+  `);
+  stmt.bind([
     'shadow-1',
     '影子分身',
     'online',
     JSON.stringify(['代码审查', '方案设计', '技术问题解决', '文档生成']),
     0,
     new Date().toISOString()
-  );
-  
+  ]);
+  stmt.step();
+  stmt.free();
+
   return db;
 }
 
-// Test data factories
 export const testTask = {
   title: 'Test Task',
   type: 'technical_issue' as const,

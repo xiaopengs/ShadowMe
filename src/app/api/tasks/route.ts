@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { getDatabase } from '@/lib/db';
+import { all, get, run } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import type { Task, TaskStatus } from '@/types';
 
@@ -34,12 +34,10 @@ export async function GET(request: Request) {
     const type = searchParams.get('type');
     const priority = searchParams.get('priority');
 
-    const db = getDatabase();
     let query = 'SELECT * FROM tasks WHERE 1=1';
     const params: any[] = [];
 
     if (status) {
-      // Support comma-separated status values (e.g., "completed,closed")
       const statuses = status.split(',').map(s => s.trim());
       if (statuses.length === 1) {
         query += ' AND status = ?';
@@ -60,7 +58,7 @@ export async function GET(request: Request) {
 
     query += ' ORDER BY created_at DESC';
 
-    const rows = db.prepare(query).all(...params);
+    const rows = await all(query, params);
     const tasks = rows.map(rowToTask);
     apiLogger.info('Tasks fetched', { count: tasks.length, filters: { status, type, priority } });
     return NextResponse.json({ tasks, total: tasks.length });
@@ -92,11 +90,10 @@ export async function POST(request: Request) {
     const id = uuidv4();
     const now = new Date().toISOString();
 
-    const db = getDatabase();
-    db.prepare(`
+    await run(`
       INSERT INTO tasks (id, title, type, priority, status, description, tags, attachments, expected_delivery, due_date, created_by, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
+    `, [
       id,
       title.trim(),
       type,
@@ -110,14 +107,14 @@ export async function POST(request: Request) {
       createdBy,
       now,
       now
-    );
+    ]);
 
-    db.prepare(`
+    await run(`
       INSERT INTO logs (task_id, action, actor, details, created_at)
       VALUES (?, ?, ?, ?, ?)
-    `).run(id, 'created', createdBy, JSON.stringify({ type, priority }), now);
+    `, [id, 'created', createdBy, JSON.stringify({ type, priority }), now]);
 
-    const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+    const row = await get('SELECT * FROM tasks WHERE id = ?', [id]);
     apiLogger.info('Task created', { taskId: id, title: title.trim() });
     return NextResponse.json(rowToTask(row), { status: 201 });
   } catch (error) {

@@ -1,11 +1,6 @@
-/**
- * Database initialization script
- * Run with: npm run db:init
- */
-
 import path from 'path';
 import fs from 'fs';
-import Database from 'better-sqlite3';
+import initSqlJs from 'sql.js';
 
 const DB_DIR = path.join(process.cwd(), 'data');
 const DB_PATH = path.join(DB_DIR, 'ShadowMe.db');
@@ -72,25 +67,57 @@ function createTables(db) {
   `);
 }
 
+function allSync(db, sql, params = []) {
+  const stmt = db.prepare(sql);
+  stmt.bind(params);
+  const results = [];
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
+}
+
+function getSync(db, sql, params = []) {
+  const stmt = db.prepare(sql);
+  stmt.bind(params);
+  let result = undefined;
+  if (stmt.step()) {
+    result = stmt.getAsObject();
+  }
+  stmt.free();
+  return result;
+}
+
+function runSync(db, sql, params = []) {
+  db.run(sql, params);
+  return { changes: db.getRowsModified() };
+}
+
+function saveDatabase(db) {
+  const data = db.export();
+  const buffer = Buffer.from(data);
+  fs.writeFileSync(DB_PATH, buffer);
+}
+
 function seedData(db) {
-  // Insert default shadow status if not exists
-  const existingShadow = db.prepare('SELECT * FROM shadow_status WHERE id = ?').get('shadow-1');
+  const existingShadow = getSync(db, 'SELECT * FROM shadow_status WHERE id = ?', ['shadow-1']);
   if (!existingShadow) {
-    db.prepare(`
+    runSync(db, `
       INSERT INTO shadow_status (id, name, status, capabilities, auto_take_tasks, last_heartbeat)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run(
+    `, [
       'shadow-1',
       '影子分身',
       'online',
       JSON.stringify(['代码审查', '方案设计', '技术问题解决', '文档生成']),
       0,
       new Date().toISOString()
-    );
+    ]);
+    saveDatabase(db);
   }
 
-  // Insert sample tasks if none exist
-  const taskCount = db.prepare('SELECT COUNT(*) as count FROM tasks').get();
+  const taskCount = getSync(db, 'SELECT COUNT(*) as count FROM tasks', []);
   if (taskCount.count === 0) {
     const sampleTasks = [
       {
@@ -126,13 +153,11 @@ function seedData(db) {
     ];
 
     const now = new Date().toISOString();
-    const insertStmt = db.prepare(`
-      INSERT INTO tasks (id, title, type, priority, status, description, tags, created_by, created_at, updated_at, started_at, completed_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
     for (const task of sampleTasks) {
-      insertStmt.run(
+      runSync(db, `
+        INSERT INTO tasks (id, title, type, priority, status, description, tags, created_by, created_at, updated_at, started_at, completed_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
         task.id,
         task.title,
         task.type,
@@ -145,24 +170,34 @@ function seedData(db) {
         now,
         task.status === 'in_progress' ? now : null,
         task.status === 'completed' ? now : null
-      );
+      ]);
     }
+    saveDatabase(db);
     console.log(`Inserted ${sampleTasks.length} sample tasks`);
   }
 }
 
-function initDatabase() {
+async function initDatabase() {
+  const SQL = await initSqlJs();
+
   if (!fs.existsSync(DB_DIR)) {
     fs.mkdirSync(DB_DIR, { recursive: true });
     console.log('Created data directory:', DB_DIR);
   }
 
-  const db = new Database(DB_PATH);
+  let db;
+  if (fs.existsSync(DB_PATH)) {
+    const buffer = fs.readFileSync(DB_PATH);
+    db = new SQL.Database(buffer);
+  } else {
+    db = new SQL.Database();
+  }
+
   createTables(db);
+  saveDatabase(db);
   seedData(db);
   console.log('Database initialized successfully at:', DB_PATH);
   db.close();
 }
 
-// Run if executed directly
 initDatabase();

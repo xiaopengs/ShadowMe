@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDatabase } from '@/lib/db';
+import { get, run } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import type { Task, TaskStatus } from '@/types';
 
@@ -32,9 +32,8 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const db = getDatabase();
 
-    const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as any;
+    const row = await get('SELECT * FROM tasks WHERE id = ?', [id]) as any;
     if (!row) {
       apiLogger.warn('Task not found for taking', { taskId: id, operation: 'POST' });
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
@@ -47,24 +46,24 @@ export async function POST(
 
     const now = new Date().toISOString();
 
-    db.prepare(`
+    await run(`
       UPDATE tasks
       SET status = 'in_progress', started_at = ?, updated_at = ?
       WHERE id = ?
-    `).run(now, now, id);
+    `, [now, now, id]);
 
-    db.prepare(`
+    await run(`
       UPDATE shadow_status
       SET status = 'busy', current_task_id = ?, last_heartbeat = ?
       WHERE id = 'shadow-1'
-    `).run(id, now);
+    `, [id, now]);
 
-    db.prepare(`
+    await run(`
       INSERT INTO logs (task_id, action, actor, details, created_at)
       VALUES (?, ?, ?, ?, ?)
-    `).run(id, 'taken', 'ShadowMe', JSON.stringify({ source: 'manual' }), now);
+    `, [id, 'taken', 'ShadowMe', JSON.stringify({ source: 'manual' }), now]);
 
-    const updated = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+    const updated = await get('SELECT * FROM tasks WHERE id = ?', [id]);
 
     apiLogger.info('Task taken', { taskId: id });
     return NextResponse.json(rowToTask(updated));

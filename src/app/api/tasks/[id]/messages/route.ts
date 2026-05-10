@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDatabase } from '@/lib/db';
+import { all, run } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { v4 as uuidv4 } from 'uuid';
 import type { TaskMessage } from '@/types';
@@ -30,18 +30,17 @@ export async function GET(
 ) {
   try {
     const { id: taskId } = await params;
-    const db = getDatabase();
-    
-    const rows = db.prepare(
-      'SELECT * FROM task_messages WHERE task_id = ? ORDER BY created_at ASC'
-    ).all(taskId) as TaskMessageRow[];
+
+    const rows = await all(
+      'SELECT * FROM task_messages WHERE task_id = ? ORDER BY created_at ASC',
+      [taskId]
+    ) as TaskMessageRow[];
 
     const messages = rows.map(rowToMessage);
     apiLogger.debug('Messages fetched', { taskId, count: messages.length });
     return NextResponse.json({ messages, total: messages.length });
   } catch (error) {
     apiLogger.error('Error fetching messages', error, { taskId: (await params).id, operation: 'GET' });
-    // Return empty messages instead of error to avoid breaking the UI
     return NextResponse.json({ messages: [], total: 0 });
   }
 }
@@ -63,32 +62,30 @@ export async function POST(
     const id = uuidv4();
     const now = new Date().toISOString();
 
-    const db = getDatabase();
-    db.prepare(`
+    await run(`
       INSERT INTO task_messages (id, task_id, type, content, created_at)
       VALUES (?, ?, ?, ?, ?)
-    `).run(id, taskId, type, content.trim(), now);
+    `, [id, taskId, type, content.trim(), now]);
 
-    // Add a system message indicating message was received
     const systemMessageId = uuidv4();
-    db.prepare(`
+    await run(`
       INSERT INTO task_messages (id, task_id, type, content, created_at)
       VALUES (?, ?, ?, ?, ?)
-    `).run(
-      systemMessageId, 
-      taskId, 
-      'system', 
-      `Message received and queued for processing`, 
+    `, [
+      systemMessageId,
+      taskId,
+      'system',
+      `Message received and queued for processing`,
       new Date(Date.now() + 1000).toISOString()
-    );
+    ]);
 
     apiLogger.info('Message created', { taskId, messageId: id, messageType: type });
-    return NextResponse.json({ 
-      id, 
-      taskId, 
-      type, 
-      content: content.trim(), 
-      createdAt: now 
+    return NextResponse.json({
+      id,
+      taskId,
+      type,
+      content: content.trim(),
+      createdAt: now
     });
   } catch (error) {
     apiLogger.error('Error creating message', error, { taskId: (await params).id, operation: 'POST' });

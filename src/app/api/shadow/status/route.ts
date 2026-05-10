@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDatabase } from '@/lib/db';
+import { get, run } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import type { ShadowState, ShadowStatus } from '@/types';
 
@@ -7,8 +7,7 @@ const apiLogger = logger.child({ module: 'api/shadow/status' });
 
 export async function GET() {
   try {
-    const db = getDatabase();
-    const row = db.prepare('SELECT * FROM shadow_status WHERE id = ?').get('shadow-1') as any;
+    const row = await get('SELECT * FROM shadow_status WHERE id = ?', ['shadow-1']) as any;
 
     if (!row) {
       const defaultShadow: ShadowState = {
@@ -34,7 +33,7 @@ export async function GET() {
     };
 
     if (shadow.currentTaskId) {
-      const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(shadow.currentTaskId) as any;
+      const task = await get('SELECT * FROM tasks WHERE id = ?', [shadow.currentTaskId]) as any;
       if (task) {
         shadow.currentTask = {
           id: task.id,
@@ -57,9 +56,9 @@ export async function GET() {
       }
     }
 
-    apiLogger.info('Shadow status fetched', { 
-      status: shadow.status, 
-      currentTaskId: shadow.currentTaskId 
+    apiLogger.info('Shadow status fetched', {
+      status: shadow.status,
+      currentTaskId: shadow.currentTaskId
     });
     return NextResponse.json(shadow);
   } catch (error) {
@@ -73,7 +72,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { status, capabilities, autoTakeTasks } = body;
 
-    const db = getDatabase();
     const updates: string[] = [];
     const values: any[] = [];
 
@@ -94,14 +92,14 @@ export async function POST(request: Request) {
     values.push(new Date().toISOString());
 
     if (updates.length > 1) {
-      db.prepare(`UPDATE shadow_status SET ${updates.join(', ')} WHERE id = 'shadow-1'`).run(...values);
+      await run(`UPDATE shadow_status SET ${updates.join(', ')} WHERE id = 'shadow-1'`, values);
     }
 
-    const row = db.prepare('SELECT * FROM shadow_status WHERE id = ?').get('shadow-1') as any;
+    const row = await get('SELECT * FROM shadow_status WHERE id = ?', ['shadow-1']) as any;
 
-    apiLogger.info('Shadow status updated', { 
+    apiLogger.info('Shadow status updated', {
       status: row.status,
-      autoTakeTasks: autoTakeTasks 
+      autoTakeTasks: autoTakeTasks
     });
     return NextResponse.json({
       id: row.id,

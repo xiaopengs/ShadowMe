@@ -1,10 +1,3 @@
-/**
- * Webhook Receiver for Claude Code (CC) Events
- * Endpoint: POST /api/webhook/cc
- * 
- * Receives events from CC plugins and processes them through the CC protocol
- */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { processCCMessage, validateCCMessage, getCCProtocolVersion } from '@/lib/cc-protocol';
@@ -14,22 +7,16 @@ import { logger } from '@/lib/logger';
 
 const webhookLogger = logger.child({ module: 'api/webhook/cc' });
 
-// API Key validation
 const CC_API_KEY = process.env.CC_WEBHOOK_API_KEY || process.env.CC_API_KEY;
 const API_KEY_HEADER = 'x-cc-api-key';
 const API_KEY_PARAM = 'api_key';
 
-/**
- * Get the API key from request (header or query param)
- */
 function getRequestApiKey(request: NextRequest): string | null {
-  // Check header first
   const headerKey = request.headers.get(API_KEY_HEADER);
   if (headerKey) {
     return headerKey;
   }
 
-  // Check query param
   const url = new URL(request.url);
   const paramKey = url.searchParams.get(API_KEY_PARAM);
   if (paramKey) {
@@ -39,43 +26,31 @@ function getRequestApiKey(request: NextRequest): string | null {
   return null;
 }
 
-/**
- * Validate API Key from request
- * Priority:
- * 1. Database API Keys (hash comparison)
- * 2. Environment variable CC_WEBHOOK_API_KEY (backward compatibility)
- * 3. Allow all if no configuration (development mode)
- */
 async function validateAPIKey(request: NextRequest): Promise<{ valid: boolean; keyId?: string }> {
   const requestKey = getRequestApiKey(request);
-  
+
   if (!requestKey) {
-    // No key provided
     if (!CC_API_KEY) {
       webhookLogger.warn('No API key provided and CC_WEBHOOK_API_KEY not configured, allowing all requests (development mode)');
-      return { valid: true }; // Development mode
+      return { valid: true };
     }
     return { valid: false };
   }
 
-  // 1. First try database API keys (hash comparison)
   const keyHash = createHash('sha256').update(requestKey).digest('hex');
-  const dbKey = getApiKeyByHash(keyHash);
-  
+  const dbKey = await getApiKeyByHash(keyHash);
+
   if (dbKey) {
-    // Check expiration
     if (isApiKeyExpired(dbKey)) {
       webhookLogger.warn('Expired API key used', { keyId: dbKey.id });
       return { valid: false };
     }
-    
-    // Update last used timestamp (async, don't wait)
+
     updateApiKeyLastUsed(dbKey.id);
     webhookLogger.info('Request authenticated via database API key', { keyId: dbKey.id });
     return { valid: true, keyId: dbKey.id };
   }
 
-  // 2. Fallback to environment variable (backward compatibility)
   if (requestKey === CC_API_KEY) {
     return { valid: true };
   }
@@ -83,13 +58,9 @@ async function validateAPIKey(request: NextRequest): Promise<{ valid: boolean; k
   return { valid: false };
 }
 
-/**
- * Handle CC webhook events
- */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
-  // Validate API Key
   const authResult = await validateAPIKey(request);
   if (!authResult.valid) {
     webhookLogger.warn('Unauthorized webhook attempt', {
@@ -102,7 +73,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Parse request body
     const contentType = request.headers.get('content-type');
     let body: unknown;
 
@@ -125,7 +95,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate message structure
     if (!validateCCMessage(body)) {
       webhookLogger.warn('Invalid CC message format', { body });
       return NextResponse.json(
@@ -134,16 +103,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    webhookLogger.info('Received CC webhook', { 
+    webhookLogger.info('Received CC webhook', {
       type: (body as any).type,
       messageId: (body as any).messageId,
       senderId: (body as any).senderId,
     });
 
-    // Process the message through CC protocol
     const result = await processCCMessage(body);
 
-    // Broadcast to all connected clients
     broadcastToChannel('webhook', 'cc:event', {
       type: (body as any).type,
       messageId: (body as any).messageId,
@@ -152,7 +119,7 @@ export async function POST(request: NextRequest) {
     });
 
     const processingTime = Date.now() - startTime;
-    webhookLogger.info('CC webhook processed', { 
+    webhookLogger.info('CC webhook processed', {
       type: (body as any).type,
       success: result.success,
       processingTime,
@@ -174,11 +141,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * Handle CC webhook events (batch endpoint)
- */
 export async function PUT(request: NextRequest) {
-  // Validate API Key
   const authResult = await validateAPIKey(request);
   if (!authResult.valid) {
     return NextResponse.json(
@@ -189,7 +152,7 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    
+
     if (!Array.isArray(body)) {
       return NextResponse.json(
         { error: 'Expected array of messages' },
@@ -216,7 +179,7 @@ export async function PUT(request: NextRequest) {
       });
     }
 
-    webhookLogger.info('Batch CC webhook processed', { 
+    webhookLogger.info('Batch CC webhook processed', {
       total: body.length,
       successful: results.filter(r => r.success).length,
     });
@@ -235,9 +198,6 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-/**
- * Health check endpoint
- */
 export async function GET() {
   return NextResponse.json({
     status: 'ok',

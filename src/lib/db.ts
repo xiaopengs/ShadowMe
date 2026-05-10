@@ -1,20 +1,24 @@
-import DatabaseLib from 'better-sqlite3';
+import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
 import path from 'path';
 import fs from 'fs';
 import { logger } from './logger';
 
-// Database path from environment variable or default
 const DB_PATH_ENV = process.env.DATABASE_PATH || './data/ShadowMe.db';
-// Resolve to absolute path if relative
-const DB_PATH = path.isAbsolute(DB_PATH_ENV) 
-  ? DB_PATH_ENV 
+const DB_PATH = path.isAbsolute(DB_PATH_ENV)
+  ? DB_PATH_ENV
   : path.join(process.cwd(), DB_PATH_ENV);
 const DB_DIR = path.dirname(DB_PATH);
 
-type Database = InstanceType<typeof DatabaseLib>;
-let dbInstance: Database | null = null;
+let dbInstance: SqlJsDatabase | null = null;
+let SQL: any = null;
 
-function createTables(db: Database) {
+async function initSql() {
+  if (SQL) return SQL;
+  SQL = await initSqlJs();
+  return SQL;
+}
+
+function createTables(db: SqlJsDatabase) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS tasks (
       id TEXT PRIMARY KEY,
@@ -90,54 +94,115 @@ function createTables(db: Database) {
   `);
 }
 
-function seedData(db: Database) {
-  const existingShadow = db.prepare('SELECT * FROM shadow_status WHERE id = ?').get('shadow-1');
+function seedData(db: SqlJsDatabase) {
+  const existingShadow = getSync(db, 'SELECT * FROM shadow_status WHERE id = ?', ['shadow-1']);
   if (!existingShadow) {
-    db.prepare(`
+    runSync(db, `
       INSERT INTO shadow_status (id, name, status, capabilities, auto_take_tasks, last_heartbeat)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run(
+    `, [
       'shadow-1',
       '影子分身',
       'online',
       JSON.stringify(['代码审查', '方案设计', '技术问题解决', '文档生成']),
       0,
       new Date().toISOString()
-    );
+    ]);
   }
 }
 
-export function initDatabase(): Database {
+function saveDatabase(): void {
+  if (dbInstance) {
+    const data = dbInstance.export();
+    const buffer = Buffer.from(data);
+    fs.writeFileSync(DB_PATH, buffer);
+  }
+}
+
+function getSync(db: SqlJsDatabase, sql: string, params: any[] = []): any | undefined {
+  const stmt = db.prepare(sql);
+  stmt.bind(params);
+  let result: any | undefined;
+  if (stmt.step()) {
+    result = stmt.getAsObject();
+  }
+  stmt.free();
+  return result;
+}
+
+function allSync(db: SqlJsDatabase, sql: string, params: any[] = []): any[] {
+  const stmt = db.prepare(sql);
+  stmt.bind(params);
+  const results: any[] = [];
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
+}
+
+function runSync(db: SqlJsDatabase, sql: string, params: any[] = []): { changes: number; lastInsertRowid: number } {
+  db.run(sql, params);
+  return { changes: db.getRowsModified(), lastInsertRowid: 0 };
+}
+
+export async function initDatabase(): Promise<SqlJsDatabase> {
+  const SQL = await initSql();
+
   if (!fs.existsSync(DB_DIR)) {
     fs.mkdirSync(DB_DIR, { recursive: true });
     logger.info('Created database directory', { path: DB_DIR });
   }
 
-  const db = new DatabaseLib(DB_PATH);
-  createTables(db);
-  seedData(db);
-  logger.info('Database initialized successfully', { path: DB_PATH });
-  return db;
-}
-
-export function getDatabase(): Database {
-  if (dbInstance) return dbInstance;
-
-  if (!fs.existsSync(DB_PATH)) {
-    dbInstance = initDatabase();
+  if (fs.existsSync(DB_PATH)) {
+    const buffer = fs.readFileSync(DB_PATH);
+    dbInstance = new SQL.Database(buffer);
   } else {
-    dbInstance = new DatabaseLib(DB_PATH);
+    dbInstance = new SQL.Database();
   }
 
+  createTables(dbInstance);
+  seedData(dbInstance);
+  saveDatabase();
+  logger.info('Database initialized successfully', { path: DB_PATH });
   return dbInstance;
+}
+
+export async function getDatabase(): Promise<SqlJsDatabase> {
+  if (dbInstance) return dbInstance;
+  return initDatabase();
 }
 
 export function closeDatabase(): void {
   if (dbInstance) {
+    saveDatabase();
     dbInstance.close();
     dbInstance = null;
     logger.info('Database connection closed');
   }
+}
+
+export async function all(sql: string, params: any[] = []): Promise<any[]> {
+  const db = await getDatabase();
+  return allSync(db, sql, params);
+}
+
+export async function get(sql: string, params: any[] = []): Promise<any | undefined> {
+  const db = await getDatabase();
+  return getSync(db, sql, params);
+}
+
+export async function run(sql: string, params: any[] = []): Promise<{ changes: number; lastInsertRowid: number }> {
+  const db = await getDatabase();
+  const result = runSync(db, sql, params);
+  saveDatabase();
+  return result;
+}
+
+export async function exec(sql: string): Promise<void> {
+  const db = await getDatabase();
+  db.exec(sql);
+  saveDatabase();
 }
 
 // ===========================================
@@ -177,19 +242,18 @@ export interface ApiKeyPublic {
   expires_at: string | null;
 }
 
-// Extended public info with full key text (for viewing)
 export interface ApiKeyWithText extends ApiKeyPublic {
   key_text: string;
 }
 
-export function createApiKey(input: ApiKeyCreateInput): ApiKey {
-  const db = getDatabase();
+export async function createApiKey(input: ApiKeyCreateInput): Promise<ApiKey> {
+  const db = await getDatabase();
   const now = new Date().toISOString();
-  
-  db.prepare(`
+
+  runSync(db, `
     INSERT INTO api_keys (id, name, key_text, key_hash, key_prefix, permissions, created_at, expires_at, created_by)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
+  `, [
     input.id,
     input.name,
     input.key_text,
@@ -199,30 +263,29 @@ export function createApiKey(input: ApiKeyCreateInput): ApiKey {
     now,
     input.expires_at || null,
     'owner'
-  );
+  ]);
+  saveDatabase();
 
-  return db.prepare('SELECT * FROM api_keys WHERE id = ?').get(input.id) as ApiKey;
+  return getSync(db, 'SELECT * FROM api_keys WHERE id = ?', [input.id]) as ApiKey;
 }
 
-export function getAllApiKeys(): ApiKeyPublic[] {
-  const db = getDatabase();
-  const keys = db.prepare(`
+export async function getAllApiKeys(): Promise<ApiKeyPublic[]> {
+  const db = await getDatabase();
+  return allSync(db, `
     SELECT id, name, key_prefix, permissions, last_used_at, created_at, expires_at
     FROM api_keys
     ORDER BY created_at DESC
-  `).all() as ApiKeyPublic[];
-  
-  return keys;
+  `) as ApiKeyPublic[];
 }
 
-export function getApiKeyById(id: string): ApiKey | undefined {
-  const db = getDatabase();
-  return db.prepare('SELECT * FROM api_keys WHERE id = ?').get(id) as ApiKey | undefined;
+export async function getApiKeyById(id: string): Promise<ApiKey | undefined> {
+  const db = await getDatabase();
+  return getSync(db, 'SELECT * FROM api_keys WHERE id = ?', [id]) as ApiKey | undefined;
 }
 
-export function getApiKeyByIdWithText(id: string): ApiKeyWithText | undefined {
-  const db = getDatabase();
-  const key = db.prepare('SELECT * FROM api_keys WHERE id = ?').get(id) as ApiKey | undefined;
+export async function getApiKeyByIdWithText(id: string): Promise<ApiKeyWithText | undefined> {
+  const db = await getDatabase();
+  const key = getSync(db, 'SELECT * FROM api_keys WHERE id = ?', [id]) as ApiKey | undefined;
   if (!key) return undefined;
   return {
     id: key.id,
@@ -236,20 +299,22 @@ export function getApiKeyByIdWithText(id: string): ApiKeyWithText | undefined {
   };
 }
 
-export function getApiKeyByHash(keyHash: string): ApiKey | undefined {
-  const db = getDatabase();
-  return db.prepare('SELECT * FROM api_keys WHERE key_hash = ?').get(keyHash) as ApiKey | undefined;
+export async function getApiKeyByHash(keyHash: string): Promise<ApiKey | undefined> {
+  const db = await getDatabase();
+  return getSync(db, 'SELECT * FROM api_keys WHERE key_hash = ?', [keyHash]) as ApiKey | undefined;
 }
 
-export function updateApiKeyLastUsed(id: string): void {
-  const db = getDatabase();
+export async function updateApiKeyLastUsed(id: string): Promise<void> {
+  const db = await getDatabase();
   const now = new Date().toISOString();
-  db.prepare('UPDATE api_keys SET last_used_at = ? WHERE id = ?').run(now, id);
+  runSync(db, 'UPDATE api_keys SET last_used_at = ? WHERE id = ?', [now, id]);
+  saveDatabase();
 }
 
-export function deleteApiKey(id: string): boolean {
-  const db = getDatabase();
-  const result = db.prepare('DELETE FROM api_keys WHERE id = ?').run(id);
+export async function deleteApiKey(id: string): Promise<boolean> {
+  const db = await getDatabase();
+  const result = runSync(db, 'DELETE FROM api_keys WHERE id = ?', [id]);
+  saveDatabase();
   return result.changes > 0;
 }
 

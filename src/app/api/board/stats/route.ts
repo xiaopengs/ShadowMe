@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDatabase } from '@/lib/db';
+import { all, get } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { getPendingTasksCount, getActiveShadowsCount } from '@/lib/task-lifecycle';
 import type { TaskStatus } from '@/types';
@@ -15,18 +15,15 @@ interface BoardStats {
   avgCompletionTime?: number;
   byPriority: Record<string, number>;
   byType: Record<string, number>;
-  // Real-time stats
   activeShadows: number;
   queuePosition: number;
-  energyLevel: number; // 0-100, based on workload
+  energyLevel: number;
   lastUpdated: string;
 }
 
 export async function GET() {
   try {
-    const db = getDatabase();
-
-    const rows = db.prepare('SELECT status, priority, type, started_at, completed_at FROM tasks').all() as any[];
+    const rows = await all('SELECT status, priority, type, started_at, completed_at FROM tasks', []) as any[];
 
     const stats: BoardStats = {
       total: rows.length,
@@ -68,31 +65,25 @@ export async function GET() {
       stats.avgCompletionTime = Math.round(totalCompletionTime / completedCount / (1000 * 60));
     }
 
-    // Get active shadows count
     try {
-      stats.activeShadows = getActiveShadowsCount();
+      stats.activeShadows = await getActiveShadowsCount();
     } catch {
-      // Fallback to simple count
-      const shadowRows = db.prepare(`
+      const shadowRows = await get(`
         SELECT COUNT(*) as count 
         FROM shadow_status 
         WHERE status IN ('online', 'busy')
-      `).get() as { count: number };
+      `, []) as { count: number } | undefined;
       stats.activeShadows = shadowRows?.count || 0;
     }
 
-    // Get queue position (next pending task)
     stats.queuePosition = stats.pending;
 
-    // Calculate energy level based on workload
-    // Energy = 100 - (pending * 10) - (inProgress * 20)
-    // Clamped to 0-100
     stats.energyLevel = Math.max(0, Math.min(100, 100 - (stats.pending * 10) - (stats.inProgress * 20)));
 
-    apiLogger.info('Board stats fetched', { 
+    apiLogger.info('Board stats fetched', {
       totalTasks: stats.total,
       activeShadows: stats.activeShadows,
-      energyLevel: stats.energyLevel 
+      energyLevel: stats.energyLevel
     });
     return NextResponse.json(stats);
   } catch (error) {

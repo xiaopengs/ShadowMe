@@ -1,9 +1,4 @@
-/**
- * Task Lifecycle Management
- * Handles task state transitions and coordinates with CC and SSE
- */
-
-import { getDatabase } from './db';
+import { getDatabase, all, get, run } from './db';
 import { broadcastToChannel } from './sse-manager';
 import { createTaskAssignMessage, type CCMessage } from './cc-protocol';
 import { logger } from './logger';
@@ -12,19 +7,7 @@ import type { Task, TaskStatus } from '@/types';
 
 const lifecycleLogger = logger.child({ module: 'task-lifecycle' });
 
-// ============================================================================
-// Task Status Machine
-// ============================================================================
-
-/**
- * Valid state transitions:
- * - pending → assigned → in_progress → reviewing → completed
- * - in_progress → closed (cancel)
- * - completed → closed
- * - reviewing → needs_feedback → in_progress
- */
-
-export type TaskLifecycleEvent = 
+export type TaskLifecycleEvent =
   | 'assign'
   | 'start'
   | 'review'
@@ -51,45 +34,30 @@ const STATUS_MAP: Record<TaskLifecycleEvent, TaskStatus> = {
   cancel: 'closed',
 };
 
-/**
- * Check if a state transition is valid
- */
 function isValidTransition(currentStatus: TaskStatus, event: TaskLifecycleEvent): boolean {
   return VALID_TRANSITIONS[currentStatus]?.includes(event) ?? false;
 }
 
-/**
- * Get task queue position
- */
-export function getQueuePosition(taskId: string): number {
-  const db = getDatabase();
-  const result = db.prepare(`
-    SELECT COUNT(*) as position 
-    FROM tasks 
-    WHERE status = 'pending' 
+export async function getQueuePosition(taskId: string): Promise<number> {
+  const result = await get(`
+    SELECT COUNT(*) as position
+    FROM tasks
+    WHERE status = 'pending'
     AND created_at <= (
       SELECT created_at FROM tasks WHERE id = ?
     )
-  `).get(taskId) as { position: number };
-  
+  `, [taskId]) as { position: number };
+
   return result?.position || 0;
 }
 
-/**
- * Get total pending tasks count
- */
-export function getPendingTasksCount(): number {
-  const db = getDatabase();
-  const result = db.prepare(`
+export async function getPendingTasksCount(): Promise<number> {
+  const result = await get(`
     SELECT COUNT(*) as count FROM tasks WHERE status = 'pending'
-  `).get() as { count: number };
-  
+  `, []) as { count: number };
+
   return result?.count || 0;
 }
-
-// ============================================================================
-// Task Operations
-// ============================================================================
 
 export interface AssignToCCOptions {
   taskId: string;
@@ -97,20 +65,15 @@ export interface AssignToCCOptions {
   notes?: string;
 }
 
-/**
- * Assign a task to CC
- */
 export async function assignToCC(options: AssignToCCOptions): Promise<{
   success: boolean;
   error?: string;
   message?: CCMessage;
 }> {
   const { taskId, sendToCC = true, notes } = options;
-  const db = getDatabase();
   const now = new Date().toISOString();
 
-  // Get task
-  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId) as {
+  const task = await get('SELECT * FROM tasks WHERE id = ?', [taskId]) as {
     id: string;
     title: string;
     description: string;
@@ -127,42 +90,37 @@ export async function assignToCC(options: AssignToCCOptions): Promise<{
     return { success: false, error: `Task is already ${task.status}` };
   }
 
-  // Validate transition
   if (!isValidTransition(task.status, 'assign')) {
     return { success: false, error: `Cannot assign task in ${task.status} status` };
   }
 
-  // Update task status
-  db.prepare(`
-    UPDATE tasks 
-    SET status = 'in_progress', 
+  await run(`
+    UPDATE tasks
+    SET status = 'in_progress',
         started_at = ?,
         updated_at = ?
     WHERE id = ?
-  `).run(now, now, taskId);
+  `, [now, now, taskId]);
 
-  // Update shadow status
-  db.prepare(`
-    UPDATE shadow_status 
-    SET status = 'busy', 
+  await run(`
+    UPDATE shadow_status
+    SET status = 'busy',
         current_task_id = ?,
         last_heartbeat = ?
     WHERE id = 'shadow-1'
-  `).run(taskId, now);
+  `, [taskId, now]);
 
-  // Add system message
   const msgId = uuidv4();
   let systemMsg = `Task assigned to Claude Code at ${new Date().toLocaleString()}`;
   if (notes) {
     systemMsg += `\n\nNotes: ${notes}`;
   }
-  
-  db.prepare(`
+
+  await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
     VALUES (?, ?, 'system', ?, ?)
-  `).run(msgId, taskId, systemMsg, now);
+  `, [msgId, taskId, systemMsg, now]);
 
-  // Create CC message if needed
   let ccMessage: CCMessage | undefined;
   if (sendToCC) {
     ccMessage = createTaskAssignMessage(
@@ -174,11 +132,10 @@ export async function assignToCC(options: AssignToCCOptions): Promise<{
     );
   }
 
-  // Broadcast updates
   broadcastToChannel('task', 'task:assigned', {
     taskId,
     assignedAt: now,
-    queuePosition: getQueuePosition(taskId),
+    queuePosition: await getQueuePosition(taskId),
   });
 
   broadcastToChannel('shadow', 'shadow:task_assigned', {
@@ -193,23 +150,18 @@ export async function assignToCC(options: AssignToCCOptions): Promise<{
     action: 'task_assigned',
   });
 
-  lifecycleLogger.info('Task assigned to CC', { taskId, queuePosition: getQueuePosition(taskId) });
+  lifecycleLogger.info('Task assigned to CC', { taskId, queuePosition: await getQueuePosition(taskId) });
 
   return { success: true, message: ccMessage };
 }
 
-/**
- * Update task progress
- */
-export function updateProgress(taskId: string, progress: number, message?: string): {
+export async function updateProgress(taskId: string, progress: number, message?: string): Promise<{
   success: boolean;
   error?: string;
-} {
-  const db = getDatabase();
+}> {
   const now = new Date().toISOString();
 
-  // Verify task exists and is in progress
-  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId) as {
+  const task = await get('SELECT * FROM tasks WHERE id = ?', [taskId]) as {
     id: string;
     status: TaskStatus;
   } | undefined;
@@ -222,16 +174,14 @@ export function updateProgress(taskId: string, progress: number, message?: strin
     return { success: false, error: `Task is ${task.status}, not in_progress` };
   }
 
-  // Add progress message if provided
   if (message) {
     const msgId = uuidv4();
-    db.prepare(`
+    await run(`
       INSERT INTO task_messages (id, task_id, type, content, created_at)
       VALUES (?, ?, 'claude', ?, ?)
-    `).run(msgId, taskId, `[Progress: ${progress}%] ${message}`, now);
+    `, [msgId, taskId, `[Progress: ${progress}%] ${message}`, now]);
   }
 
-  // Broadcast progress update
   broadcastToChannel('task', 'task:progress', {
     taskId,
     progress,
@@ -250,21 +200,16 @@ export function updateProgress(taskId: string, progress: number, message?: strin
   return { success: true };
 }
 
-/**
- * Complete a task
- */
-export function completeTask(
-  taskId: string, 
+export async function completeTask(
+  taskId: string,
   result?: { type: string; url?: string; summary: string; commitSha?: string }
-): {
+): Promise<{
   success: boolean;
   error?: string;
-} {
-  const db = getDatabase();
+}> {
   const now = new Date().toISOString();
 
-  // Get task
-  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId) as {
+  const task = await get('SELECT * FROM tasks WHERE id = ?', [taskId]) as {
     id: string;
     title: string;
     status: TaskStatus;
@@ -278,31 +223,28 @@ export function completeTask(
     return { success: false, error: `Cannot complete task in ${task.status} status` };
   }
 
-  // Update task status
-  db.prepare(`
-    UPDATE tasks 
-    SET status = 'completed', 
+  await run(`
+    UPDATE tasks
+    SET status = 'completed',
         completed_at = ?,
         result = ?,
         updated_at = ?
     WHERE id = ?
-  `).run(
-    now, 
+  `, [
+    now,
     result ? JSON.stringify(result) : null,
     now,
     taskId
-  );
+  ]);
 
-  // Update shadow status
-  db.prepare(`
-    UPDATE shadow_status 
-    SET status = 'online', 
+  await run(`
+    UPDATE shadow_status
+    SET status = 'online',
         current_task_id = NULL,
         last_heartbeat = ?
     WHERE id = 'shadow-1'
-  `).run(now);
+  `, [now]);
 
-  // Add completion message
   const msgId = uuidv4();
   let completionText = `✅ Task completed at ${new Date().toLocaleString()}`;
   if (result) {
@@ -312,12 +254,11 @@ export function completeTask(
     completionText += `\n\n${result.summary}`;
   }
 
-  db.prepare(`
+  await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
     VALUES (?, ?, 'system', ?, ?)
-  `).run(msgId, taskId, completionText, now);
+  `, [msgId, taskId, completionText, now]);
 
-  // Broadcast updates
   broadcastToChannel('task', 'task:completed', {
     taskId,
     result,
@@ -340,18 +281,13 @@ export function completeTask(
   return { success: true };
 }
 
-/**
- * Mark task as error
- */
-export function errorTask(taskId: string, error: string, recoverable: boolean = true): {
+export async function errorTask(taskId: string, error: string, recoverable: boolean = true): Promise<{
   success: boolean;
   error?: string;
-} {
-  const db = getDatabase();
+}> {
   const now = new Date().toISOString();
 
-  // Get task
-  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId) as {
+  const task = await get('SELECT * FROM tasks WHERE id = ?', [taskId]) as {
     id: string;
     status: TaskStatus;
   } | undefined;
@@ -360,27 +296,24 @@ export function errorTask(taskId: string, error: string, recoverable: boolean = 
     return { success: false, error: 'Task not found' };
   }
 
-  // Update status based on recoverability
   const newStatus: TaskStatus = recoverable ? 'in_progress' : 'needs_feedback';
-  
-  db.prepare(`
-    UPDATE tasks 
+
+  await run(`
+    UPDATE tasks
     SET status = ?, updated_at = ?
     WHERE id = ?
-  `).run(newStatus, now, taskId);
+  `, [newStatus, now, taskId]);
 
-  // Add error message
   const msgId = uuidv4();
   const errorText = recoverable
     ? `⚠️ Error occurred: ${error}\n\nThe task will continue processing...`
     : `❌ Critical error: ${error}\n\nThis error requires attention.`;
 
-  db.prepare(`
+  await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
     VALUES (?, ?, 'system', ?, ?)
-  `).run(msgId, taskId, errorText, now);
+  `, [msgId, taskId, errorText, now]);
 
-  // Broadcast error
   broadcastToChannel('task', 'task:error', {
     taskId,
     error,
@@ -393,17 +326,13 @@ export function errorTask(taskId: string, error: string, recoverable: boolean = 
   return { success: true };
 }
 
-/**
- * Close a task (cancel or finalize)
- */
-export function closeTask(taskId: string, reason?: string): {
+export async function closeTask(taskId: string, reason?: string): Promise<{
   success: boolean;
   error?: string;
-} {
-  const db = getDatabase();
+}> {
   const now = new Date().toISOString();
 
-  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId) as {
+  const task = await get('SELECT * FROM tasks WHERE id = ?', [taskId]) as {
     id: string;
     status: TaskStatus;
     current_task_id?: string;
@@ -417,41 +346,37 @@ export function closeTask(taskId: string, reason?: string): {
     return { success: false, error: `Cannot close task in ${task.status} status` };
   }
 
-  // Update task status
-  db.prepare(`
-    UPDATE tasks 
+  await run(`
+    UPDATE tasks
     SET status = 'closed', updated_at = ?
     WHERE id = ?
-  `).run(now, taskId);
+  `, [now, taskId]);
 
-  // If CC was working on this task, update shadow status
-  const shadow = db.prepare('SELECT current_task_id FROM shadow_status WHERE id = ?').get('shadow-1') as {
+  const shadow = await get('SELECT current_task_id FROM shadow_status WHERE id = ?', ['shadow-1']) as {
     current_task_id: string | null;
   } | undefined;
 
   if (shadow?.current_task_id === taskId) {
-    db.prepare(`
-      UPDATE shadow_status 
-      SET status = 'online', 
+    await run(`
+      UPDATE shadow_status
+      SET status = 'online',
           current_task_id = NULL,
           last_heartbeat = ?
       WHERE id = 'shadow-1'
-    `).run(now);
+    `, [now]);
   }
 
-  // Add closure message
   const msgId = uuidv4();
   let closureText = `📁 Task closed at ${new Date().toLocaleString()}`;
   if (reason) {
     closureText += `\nReason: ${reason}`;
   }
 
-  db.prepare(`
+  await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
     VALUES (?, ?, 'system', ?, ?)
-  `).run(msgId, taskId, closureText, now);
+  `, [msgId, taskId, closureText, now]);
 
-  // Broadcast update
   broadcastToChannel('task', 'task:closed', {
     taskId,
     reason,
@@ -467,35 +392,29 @@ export function closeTask(taskId: string, reason?: string): {
   return { success: true };
 }
 
-/**
- * Add a message to a task
- */
-export function addTaskMessage(
+export async function addTaskMessage(
   taskId: string,
   type: 'user' | 'system' | 'claude',
   content: string
-): {
+): Promise<{
   success: boolean;
   messageId?: string;
   error?: string;
-} {
-  const db = getDatabase();
+}> {
   const now = new Date().toISOString();
 
-  // Verify task exists
-  const task = db.prepare('SELECT id FROM tasks WHERE id = ?').get(taskId);
+  const task = await get('SELECT id FROM tasks WHERE id = ?', [taskId]);
   if (!task) {
     return { success: false, error: 'Task not found' };
   }
 
   const messageId = uuidv4();
-  
-  db.prepare(`
+
+  await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
     VALUES (?, ?, ?, ?, ?)
-  `).run(messageId, taskId, type, content, now);
+  `, [messageId, taskId, type, content, now]);
 
-  // Broadcast message
   broadcastToChannel('messages', 'message:new', {
     taskId,
     type,
@@ -507,20 +426,16 @@ export function addTaskMessage(
   return { success: true, messageId };
 }
 
-/**
- * Get active CC instances count (connected shadows)
- */
-export function getActiveShadowsCount(): number {
-  const db = getDatabase();
+export async function getActiveShadowsCount(): Promise<number> {
   const now = new Date();
-  const heartbeatTimeout = 5 * 60 * 1000; // 5 minutes
+  const heartbeatTimeout = 5 * 60 * 1000;
 
-  const result = db.prepare(`
-    SELECT COUNT(*) as count 
-    FROM shadow_status 
-    WHERE status IN ('online', 'busy') 
+  const result = await get(`
+    SELECT COUNT(*) as count
+    FROM shadow_status
+    WHERE status IN ('online', 'busy')
     AND datetime(last_heartbeat) > datetime(?, '-5 minutes')
-  `).get(now.toISOString()) as { count: number };
+  `, [now.toISOString()]) as { count: number };
 
   return result?.count || 0;
 }

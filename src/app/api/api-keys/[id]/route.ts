@@ -1,17 +1,9 @@
-/**
- * API Key Delete Endpoint
- * Endpoint: DELETE /api/api-keys/[id]
- */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getApiKeyById, deleteApiKey } from '@/lib/db';
 import { logger } from '@/lib/logger';
 
 const apiLogger = logger.child({ module: 'api/api-keys/delete' });
 
-/**
- * DELETE /api/api-keys/[id] - Delete an API key
- */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -26,8 +18,7 @@ export async function DELETE(
       );
     }
 
-    // Check if the key exists
-    const existingKey = getApiKeyById(id);
+    const existingKey = await getApiKeyById(id);
     if (!existingKey) {
       return NextResponse.json(
         { error: 'API key not found' },
@@ -35,8 +26,7 @@ export async function DELETE(
       );
     }
 
-    // Delete the key
-    const deleted = deleteApiKey(id);
+    const deleted = await deleteApiKey(id);
 
     if (deleted) {
       apiLogger.info('API key deleted', { id, name: existingKey.name });
