@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "shadowme": {
+      "type": "http",
+      "url": "${SHADOWME_URL}/api/mcp",
+      "headers": {
+        "x-cc-api-key": "${SHADOWME_API_KEY}"
+      },
+      "description": "ShadowMe 看板 MCP Server - 提供任务管理、状态同步等能力"
+    }
+  },
+  "capabilities": {
+    "tools": true,
+    "resources": true,
+    "prompts": true
+  }
+}
