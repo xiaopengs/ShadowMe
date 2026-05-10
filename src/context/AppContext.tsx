@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useReducer, useEffect, type ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, type ReactNode } from 'react';
 import type { Task, ShadowState, Notification, Stats } from '@/types';
 
 interface AppState {
@@ -105,7 +105,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       const res = await fetch('/api/tasks');
@@ -126,9 +126,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  };
+  }, []);
 
-  const createTask = async (data: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'status'>): Promise<Task> => {
+  const createTask = useCallback(async (data: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'status'>): Promise<Task> => {
     const res = await fetch('/api/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -138,9 +138,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const task = await res.json();
     dispatch({ type: 'ADD_TASK', payload: task });
     return task;
-  };
+  }, []);
 
-  const updateTask = async (id: string, data: Partial<Task>) => {
+  const updateTask = useCallback(async (id: string, data: Partial<Task>) => {
     const res = await fetch(`/api/tasks/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -149,22 +149,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!res.ok) throw new Error('Failed to update task');
     const updated = await res.json();
     dispatch({ type: 'UPDATE_TASK', payload: updated });
-  };
+  }, []);
 
-  const deleteTask = async (id: string) => {
+  const deleteTask = useCallback(async (id: string) => {
     const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to delete task');
     dispatch({ type: 'DELETE_TASK', payload: id });
-  };
+  }, []);
 
-  const takeTask = async (id: string) => {
+  const takeTask = useCallback(async (id: string) => {
     const res = await fetch(`/api/tasks/${id}/take`, { method: 'POST' });
     if (!res.ok) throw new Error('Failed to take task');
     const updated = await res.json();
     dispatch({ type: 'UPDATE_TASK', payload: updated });
-  };
+  }, []);
 
-  const completeTask = async (id: string, result: Task['result']) => {
+  const completeTask = useCallback(async (id: string, result: Task['result']) => {
     const res = await fetch(`/api/tasks/${id}/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -173,7 +173,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!res.ok) throw new Error('Failed to complete task');
     const updated = await res.json();
     dispatch({ type: 'UPDATE_TASK', payload: updated });
-  };
+  }, []);
 
   useEffect(() => {
     fetchTasks();
@@ -193,7 +193,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     fetchShadowStatus();
     const interval = setInterval(fetchShadowStatus, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchTasks]);
 
   return (
     <AppContext.Provider value={{

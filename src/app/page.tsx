@@ -370,13 +370,10 @@ export default function DashboardPage() {
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      await fetchTasks();
-      setIsLoading(false);
-    };
-    loadData();
-  }, [fetchTasks]);
+    if (!state.isLoading && state.tasks.length === 0 && !state.error) {
+      fetchTasks();
+    }
+  }, []);
 
   const pendingTasks = state.tasks.filter(t => t.status === 'pending');
   const inProgressTasks = state.tasks.filter(t => t.status === 'in_progress');
