@@ -203,15 +203,34 @@ npm start
 
 1. 点击 **"Marketplaces"** 标签
 2. 添加本地插件目录：
+
+   **Mac / Linux 用户：**
    ```
    /workspace/ShadowMe/plugins/ShadowMe-plugin
    ```
+
+   **Windows 用户：**
+   ```
+   D:\AICoding\trea\ShadowMe\plugins\ShadowMe-plugin
+   ```
    
-   **新手提示**：路径要改成你实际放代码的地方！
+   **新手提示**：路径要改成你实际放代码的地方！比如你的代码在 D 盘，就改成 `D:\你的文件夹\ShadowMe\plugins\ShadowMe-plugin`
 
 3. 或者直接用命令启动（推荐新手）：
+
+   **Mac / Linux：**
    ```bash
    claude --plugin-dir /workspace/ShadowMe/plugins/ShadowMe-plugin
+   ```
+
+   **Windows（PowerShell）：**
+   ```powershell
+   claude --plugin-dir D:\AICoding\trea\ShadowMe\plugins\ShadowMe-plugin
+   ```
+
+   **Windows（CMD）：**
+   ```cmd
+   claude --plugin-dir "D:\AICoding\trea\ShadowMe\plugins\ShadowMe-plugin"
    ```
 
 #### 5.4 安装插件
@@ -233,6 +252,7 @@ cp .env.example .env
 
 编辑 `.env` 文件：
 
+**Mac / Linux 用户示例：**
 ```env
 # 看板地址（跟之前一样）
 SHADOW_BOARD_URL=http://localhost:3000
@@ -241,8 +261,22 @@ SHADOW_BOARD_URL=http://localhost:3000
 GITLAB_URL=https://gitlab.example.com
 GITLAB_TOKEN=glpat_你的token
 GITLAB_DEFAULT_PROJECT=123
-WORKING_DIRECTORY=/你的/工作/目录
+WORKING_DIRECTORY=/home/你的用户名/projects
 ```
+
+**Windows 用户示例：**
+```env
+# 看板地址（跟之前一样）
+SHADOW_BOARD_URL=http://localhost:3000
+
+# GitLab 配置（如果有的话）
+GITLAB_URL=https://gitlab.example.com
+GITLAB_TOKEN=glpat_你的token
+GITLAB_DEFAULT_PROJECT=123
+WORKING_DIRECTORY=D:\AICoding\trea
+```
+
+**新手提示**：`WORKING_DIRECTORY` 就是你平时写代码放项目的文件夹！比如你所有项目都在 `D:\AICoding\trea` 下面，就填这个路径。
 
 ---
 
@@ -406,7 +440,23 @@ ShadowMe/
    ```
 3. 重启 Claude Code 或 VS Code
 
-### 4. 连不上 GitLab？
+### 4. Windows 路径怎么写？
+
+**问题**：不知道 Windows 路径格式，或者提示找不到路径
+
+**解决方案**：
+- Windows 路径用反斜杠 `\`，比如 `D:\AICoding\trea\ShadowMe`
+- 如果路径有空格，用引号括起来，比如 `"D:\My Projects\ShadowMe"`
+- 在 Claude Code 的 Marketplaces 里直接粘贴完整路径就行
+- 在命令行里，PowerShell 和 CMD 都支持 Windows 路径
+
+**举个例子**：
+| 系统 | 路径写法 |
+|------|---------|
+| Mac/Linux | `/workspace/ShadowMe/plugins/ShadowMe-plugin` |
+| Windows | `D:\AICoding\trea\ShadowMe\plugins\ShadowMe-plugin` |
+
+### 5. 连不上 GitLab？
 
 **问题**：创建 MR 时报错
 
@@ -415,7 +465,7 @@ ShadowMe/
 2. Token 有没有过期，去 GitLab 重新生成一个
 3. Token 要有 api、write_repository 权限
 
-### 5. 还是不会用？
+### 6. 还是不会用？
 
 **别担心！**
 1. 仔细再看一遍教程
