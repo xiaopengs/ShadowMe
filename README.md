@@ -201,27 +201,11 @@ npm start
 
 #### 5.3 添加 ShadowMe 插件
 
-1. 在 Claude Code 对话框中输入 `/plugins` 并发送
+现在有两种方式，推荐用方式一最简单：
 
-2. 会打开 **Manage plugins** 界面，点击 **Marketplaces** 标签
+**方式一：直接用命令行加载（最简单，不用配置）**
 
-3. 添加本地插件目录：
-
-   **Mac / Linux 用户：**
-   ```
-   /workspace/ShadowMe/plugins/ShadowMe-plugin
-   ```
-
-   **Windows 用户：**
-   ```
-   D:\AICoding\trea\ShadowMe\plugins\ShadowMe-plugin
-   ```
-   
-   **新手提示**：路径要改成你实际放代码的地方！比如你的代码在 D 盘，就改成 `D:\你的文件夹\ShadowMe\plugins\ShadowMe-plugin`
-
-4. 添加完路径后，刷新一下（点击刷新图标），然后回到 **Plugins** 标签，就会看到 shadowme 插件
-
-5. 或者直接用命令启动（推荐新手）：
+1. 在 VS Code 终端里直接运行：
 
    **Mac / Linux：**
    ```bash
@@ -237,6 +221,32 @@ npm start
    ```cmd
    claude --plugin-dir "D:\AICoding\trea\ShadowMe\plugins\ShadowMe-plugin"
    ```
+
+2. 然后就可以直接用 `/shadowme:status` 等技能了！
+
+---
+
+**方式二：通过 UI marketplace 添加（如果需要）**
+
+1. 在 Claude Code 对话框中输入 `/plugins` 并发送
+
+2. 会打开 **Manage plugins** 界面，点击 **Marketplaces** 标签
+
+3. 添加项目根目录（不是插件目录！）：
+
+   **Mac / Linux 用户：**
+   ```
+   /workspace/ShadowMe
+   ```
+
+   **Windows 用户：**
+   ```
+   D:\AICoding\trea\ShadowMe
+   ```
+   
+   **新手提示**：这次是项目根目录，不是插件子目录！因为 marketplace.json 在根目录里！
+
+4. 添加完路径后，刷新一下（点击刷新图标），然后回到 **Plugins** 标签，就会看到 shadowme 插件
 
 #### 5.4 安装插件
 
