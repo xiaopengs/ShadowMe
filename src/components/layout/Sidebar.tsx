@@ -12,6 +12,7 @@ import {
   RefreshCw,
   HelpCircle,
   FileText,
+  Bot,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 
@@ -74,11 +75,9 @@ function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           <div className="relative">
             <div className="absolute inset-0 rounded-full bg-[var(--color-primary)]/20 blur-xl" aria-hidden="true" />
             <div className="absolute inset-0 rounded-full bg-[var(--color-primary)]/10 blur-md animate-pulse" aria-hidden="true" />
-            <img
-              src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop&crop=face"
-              alt="Shadow Clone Alpha - User avatar"
-              className="relative w-11 h-11 rounded-full object-cover border-2 border-[var(--color-primary)] shadow-[0_0_12px_rgba(var(--color-primary-rgb, 194,101,42),0.5)]"
-            />
+            <div className="relative w-11 h-11 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] flex items-center justify-center border-2 border-[var(--color-primary)] shadow-[0_0_12px_rgba(var(--color-primary-rgb, 194,101,42),0.5)]">
+              <Bot size={22} className="text-white" />
+            </div>
             <span
               className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[var(--color-surface-container-low)] ${
                 state.shadow.status === 'online' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' :

@@ -14,6 +14,7 @@ import {
   Paperclip,
   Wifi,
   WifiOff,
+  User,
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import GlassHeader from '@/components/ui/GlassHeader';
@@ -445,12 +446,8 @@ export default function TaskDetailPage() {
             {/* Meta Info Bar */}
             <div className="flex flex-wrap gap-4 items-center py-4 border-y border-[var(--color-outline-variant)]/20">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-[var(--color-surface-bright)] border border-[var(--color-outline-variant)]/50 overflow-hidden shrink-0">
-                  <img
-                    src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face"
-                    alt={task.createdBy}
-                    className="w-full h-full object-cover"
-                  />
+                <div className="w-8 h-8 rounded-full bg-[var(--color-surface-bright)] border border-[var(--color-outline-variant)]/50 overflow-hidden shrink-0 flex items-center justify-center">
+                  <User size={16} className="text-[var(--color-on-surface-variant)]" />
                 </div>
                 <div className="flex flex-col">
                   <span className="font-body text-xs text-[var(--color-on-surface-variant)]">Created by</span>

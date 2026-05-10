@@ -19,6 +19,7 @@ import {
   Archive,
   Inbox,
   Clock,
+  Bot,
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useApp } from '@/context/AppContext';
@@ -234,15 +235,9 @@ const TaskCardComponent = memo(function TaskCardComponent({
 
         <div className="flex items-center justify-between mt-auto">
           <div className="flex items-center gap-2 text-[var(--color-on-surface-variant)]">
-            <img
-              src={isActive 
-                ? "https://images.unsplash.com/photo-1531297461136-82af7ce98621?w=40&h=40&fit=crop"
-                : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
-              }
-              alt=""
-              className={`w-5 h-5 rounded-full object-cover ${isActive ? 'shadow-energy-glow' : ''}`}
-              aria-hidden="true"
-            />
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${isActive ? 'bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)]' : 'bg-[var(--color-surface-variant)]'}`}>
+              <Bot size={12} className={isActive ? 'text-white' : 'text-[var(--color-on-surface-variant)]'} />
+            </div>
             <span className="text-[11px] font-mono">
               {isActive ? 'Shadow.OS' : task.createdBy.split(' ')[0]}
             </span>
@@ -408,11 +403,9 @@ export default function DashboardPage() {
               aria-label={`Shadow Status: ${state.shadow.status === 'online' ? 'Ready & Waiting' : 'Offline'}`}
             >
               <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1531297461136-82af7ce98621?w=40&h=40&fit=crop"
-                  alt="Shadow Avatar"
-                  className="w-8 h-8 rounded-full object-cover"
-                />
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] flex items-center justify-center">
+                  <Bot size={18} className="text-white" />
+                </div>
                 <motion.span 
                   className="absolute -bottom-1 -right-1 w-3 h-3 bg-[var(--color-secondary)] rounded-full shadow-sync-glow border-2 border-[var(--color-surface)]"
                   animate={{ 
