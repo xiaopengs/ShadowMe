@@ -34,6 +34,7 @@ export interface TaskResult {
 
 export interface ShadowConfig {
   boardUrl: string;
+  apiKey: string;
   gitlabUrl: string;
   gitlabToken: string;
   gitlabDefaultProject: string;

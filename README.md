@@ -192,17 +192,34 @@ claude --plugin-dir /workspace/ShadowMe/plugins/ShadowMe-plugin
 claude --plugin-dir D:\AICoding\trea\ShadowMe\plugins\ShadowMe-plugin
 ```
 
-### 第四步：配置插件（可选）
+### 第四步：配置 API Key（打通链路的关键！）
+
+API Key 是插件和看板之间的认证凭证，**配置后插件才能接收任务通知和操作看板**。
+
+#### 4.1 在看板设置页面生成 API Key
+
+1. 打开浏览器访问 **http://localhost:3000/settings**
+2. 找到 **API Key 管理** 区域
+3. 点击 **"生成新密钥"**
+4. 输入名称（比如 `my-claude-plugin`）
+5. 点击确认，会生成一个 `sm_` 开头的密钥
+6. ⚠️ **立刻复制保存！密钥只显示一次！**
+
+#### 4.2 把 API Key 配置到插件
 
 ```bash
 cd plugins/ShadowMe-plugin
 cp .env.example .env
 ```
 
-编辑 `.env`：
+编辑 `.env` 文件，填入你的 API Key：
 
 ```env
+# 看板地址
 SHADOW_BOARD_URL=http://localhost:3000
+
+# 👇 把刚才复制的 sm_ 开头的密钥粘贴到这里
+SHADOW_API_KEY=sm_你刚才复制的密钥
 
 # GitLab（可选）
 GITLAB_URL=https://gitlab.example.com
@@ -210,6 +227,19 @@ GITLAB_TOKEN=glpat-你的token
 GITLAB_DEFAULT_PROJECT=123
 WORKING_DIRECTORY=D:\AICoding\trea
 ```
+
+#### 4.3 验证链路是否打通
+
+在 Claude Code 中运行：
+
+```
+/shadowme:status
+```
+
+如果看到看板状态信息（任务数量、分身状态等），说明链路已经打通！🎉
+
+> **没有配置 API Key 会怎样？**
+> 插件仍然可以工作，但处于"开发模式"，功能受限。生产环境建议一定要配置 API Key。
 
 ### 第五步：开始使用！
 

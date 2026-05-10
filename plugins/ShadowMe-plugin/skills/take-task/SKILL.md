@@ -6,8 +6,12 @@ description: Take/accept a task from ShadowMe board
 
 Take ownership of a task from the ShadowMe board.
 
-Get task ID from user, then call the ShadowMe API to mark the task as taken (status: in_progress).
+Use fetch to POST to: {boardUrl}/api/tasks/{taskId}/take
 
-Ask user for the task ID or let them choose from pending tasks.
+If an API key is configured (SHADOW_API_KEY), include it in the request header as `x-cc-api-key`.
 
-After taking, confirm the task is now in progress and show details.
+This changes the task status from "pending" to "in_progress" and updates the shadow avatar status to "busy".
+
+If no task ID provided, first list pending tasks so the user can choose.
+
+After taking, confirm the task is now in progress and show its details.

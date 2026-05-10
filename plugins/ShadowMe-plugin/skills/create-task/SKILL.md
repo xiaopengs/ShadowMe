@@ -6,14 +6,23 @@ description: Create a new task on ShadowMe board
 
 Create a new task on the ShadowMe collaboration board.
 
-Get task details from user:
-1. Title (required)
-2. Type (technical_issue, design_doc, code_review, other)
-3. Priority (low, medium, high, urgent)
-4. Description
-5. Tags (optional, comma-separated)
-6. Created by (optional, default to user)
+Use fetch to POST to: {boardUrl}/api/tasks
 
-Use fetch tool to POST to ShadowMe board API to create the task.
+If an API key is configured (SHADOW_API_KEY), include it in the request header as `x-cc-api-key`.
 
-After creation, show the task details including the task ID.
+Request body:
+```json
+{
+  "title": "Task title",
+  "type": "technical_issue",
+  "priority": "medium",
+  "description": "Task description",
+  "tags": ["tag1"],
+  "createdBy": "Claude"
+}
+```
+
+Valid types: technical_issue, design_doc, code_review, other
+Valid priorities: low, medium, high, urgent
+
+After creation, show the task ID and details.

@@ -6,12 +6,23 @@ description: Complete a task on ShadowMe board with results
 
 Mark a task as completed on the ShadowMe board and submit results.
 
-Get from user:
-1. Task ID
-2. Result type (merge_request, document, summary)
-3. Result summary/description
-4. URL (optional, for MR links or documents)
+Use fetch to POST to: {boardUrl}/api/tasks/{taskId}/complete
 
-Use fetch tool to POST to ShadowMe complete task API.
+If an API key is configured (SHADOW_API_KEY), include it in the request header as `x-cc-api-key`.
 
-After completion, show confirmation and task status update.
+Request body:
+```json
+{
+  "result": {
+    "type": "text",
+    "summary": "Description of what was done",
+    "url": "https://optional-link.com"
+  }
+}
+```
+
+Valid result types: merge_request, commit, document, text
+
+This changes the task status from "in_progress" to "completed" and updates the shadow avatar status back to "online".
+
+After completion, show confirmation and task status.

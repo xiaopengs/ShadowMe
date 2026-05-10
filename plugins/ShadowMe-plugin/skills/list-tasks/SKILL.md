@@ -6,17 +6,14 @@ description: List all tasks on ShadowMe board
 
 Fetch and display all tasks from the ShadowMe board.
 
-Make an API call to get all tasks, then display them organized by status:
-- Pending
-- In Progress
-- Completed
-- Closed
+Use fetch to call: GET {boardUrl}/api/tasks?status={status}
 
-For each task, show:
+Supported status filters: pending, in_progress, completed, closed
+
+If an API key is configured (SHADOW_API_KEY), include it in the request header as `x-cc-api-key`.
+
+Display tasks organized by status. For each task show:
+- ID (first 8 chars)
 - Title
-- Type
-- Priority
+- Type and Priority
 - Created by
-- Description (truncated if too long)
-
-Use fetch tool to get tasks from ShadowMe board API.

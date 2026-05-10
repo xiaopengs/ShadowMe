@@ -1,19 +1,17 @@
 import { EventEmitter } from 'events';
-import WebSocket from 'ws';
 import type { Task, ShadowConfig, TaskResult, GitLabMR } from './types';
 
 class ShadowClonePlugin extends EventEmitter {
   private config: ShadowConfig;
-  private ws: WebSocket | null = null;
   private pollingTimer: NodeJS.Timeout | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
-  private isConnected: boolean = false;
   private pendingTasks: Map<string, Task> = new Map();
 
   constructor(config: Partial<ShadowConfig> = {}) {
     super();
     this.config = {
       boardUrl: config.boardUrl || process.env.SHADOW_BOARD_URL || 'http://localhost:3000',
+      apiKey: config.apiKey || process.env.SHADOW_API_KEY || '',
       gitlabUrl: config.gitlabUrl || process.env.GITLAB_URL || '',
       gitlabToken: config.gitlabToken || process.env.GITLAB_TOKEN || '',
       gitlabDefaultProject: config.gitlabDefaultProject || process.env.GITLAB_DEFAULT_PROJECT || '',
@@ -23,73 +21,41 @@ class ShadowClonePlugin extends EventEmitter {
     };
   }
 
+  private getHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (this.config.apiKey) {
+      headers['x-cc-api-key'] = this.config.apiKey;
+    }
+    return headers;
+  }
+
   async initialize(): Promise<void> {
     console.log('🔮 ShadowMe Plugin initializing...');
-    await this.connectWebSocket();
+    console.log(`   Board URL: ${this.config.boardUrl}`);
+    console.log(`   API Key: ${this.config.apiKey ? '✅ configured' : '⚠️ not set (dev mode)'}`);
+
+    const statusOk = await this.checkConnection();
+    if (statusOk) {
+      console.log('   Connection: ✅ Board reachable');
+    } else {
+      console.log('   Connection: ❌ Board unreachable');
+    }
+
     this.startPolling();
     this.startHeartbeat();
     console.log('✅ ShadowMe Plugin initialized');
   }
 
-  private async connectWebSocket(): Promise<void> {
+  async checkConnection(): Promise<boolean> {
     try {
-      const wsUrl = `${this.config.boardUrl.replace('http', 'ws')}/api/ws`;
-      this.ws = new WebSocket(wsUrl);
-
-      this.ws.on('open', () => {
-        console.log('📡 WebSocket connected');
-        this.isConnected = true;
-        this.sendHeartbeat();
+      const response = await fetch(`${this.config.boardUrl}/api/status`, {
+        headers: this.getHeaders(),
       });
-
-      this.ws.on('message', (data: WebSocket.RawData) => {
-        try {
-          const message = JSON.parse(data.toString());
-          this.handleMessage(message);
-        } catch (err) {
-          console.error('Failed to parse WebSocket message:', err);
-        }
-      });
-
-      this.ws.on('close', () => {
-        console.log('📡 WebSocket disconnected');
-        this.isConnected = false;
-        setTimeout(() => this.connectWebSocket(), 5000);
-      });
-
-      this.ws.on('error', (err) => {
-        console.error('WebSocket error:', err);
-      });
-    } catch (err) {
-      console.error('Failed to connect WebSocket:', err);
-      setTimeout(() => this.connectWebSocket(), 5000);
-    }
-  }
-
-  private handleMessage(message: any): void {
-    const { event, data } = message;
-
-    switch (event) {
-      case 'task:created':
-        console.log(`📋 New task created: ${data.title}`);
-        this.emit('task:created', data);
-        if (this.config.autoTakeTasks) {
-          this.takeTask(data.id);
-        }
-        break;
-
-      case 'task:updated':
-        console.log(`📝 Task updated: ${data.title} -> ${data.status}`);
-        this.emit('task:updated', data);
-        break;
-
-      case 'shadow:status_changed':
-        console.log(`🟢 Shadow status: ${data.status}`);
-        this.emit('shadow:status_changed', data);
-        break;
-
-      default:
-        this.emit('message', message);
+      return response.ok;
+    } catch {
+      return false;
     }
   }
 
@@ -106,6 +72,7 @@ class ShadowClonePlugin extends EventEmitter {
         if (!this.pendingTasks.has(task.id)) {
           this.pendingTasks.set(task.id, task);
           this.emit('task:pending', task);
+          console.log(`📋 New task detected: ${task.title} [${task.id.slice(0, 8)}]`);
           if (this.config.autoTakeTasks) {
             this.takeTask(task.id);
           }
@@ -126,15 +93,14 @@ class ShadowClonePlugin extends EventEmitter {
     try {
       const response = await fetch(`${this.config.boardUrl}/api/shadow/status`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({
           status: this.pendingTasks.size > 0 ? 'busy' : 'online',
           lastHeartbeat: new Date().toISOString(),
         }),
       });
       if (!response.ok) {
-        const errText = await response.text();
-        throw { response: { status: response.status, data: errText } };
+        console.error(`Heartbeat failed: ${response.status}`);
       }
     } catch (err) {
       console.error('Failed to send heartbeat:', err);
@@ -146,10 +112,12 @@ class ShadowClonePlugin extends EventEmitter {
       const url = status
         ? `${this.config.boardUrl}/api/tasks?status=${status}`
         : `${this.config.boardUrl}/api/tasks`;
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: this.getHeaders(),
+      });
       if (!response.ok) {
         const errText = await response.text();
-        throw { response: { status: response.status, data: errText } };
+        throw new Error(`Failed to fetch tasks: ${response.status} ${errText}`);
       }
       const data = await response.json();
       return data.tasks;
@@ -165,10 +133,12 @@ class ShadowClonePlugin extends EventEmitter {
 
   async getTask(taskId: string): Promise<Task | null> {
     try {
-      const response = await fetch(`${this.config.boardUrl}/api/tasks/${taskId}`);
+      const response = await fetch(`${this.config.boardUrl}/api/tasks/${taskId}`, {
+        headers: this.getHeaders(),
+      });
       if (!response.ok) {
         const errText = await response.text();
-        throw { response: { status: response.status, data: errText } };
+        throw new Error(`Failed to fetch task: ${response.status} ${errText}`);
       }
       const data = await response.json();
       return data;
@@ -182,11 +152,11 @@ class ShadowClonePlugin extends EventEmitter {
     try {
       const response = await fetch(`${this.config.boardUrl}/api/tasks/${taskId}/take`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
       });
       if (!response.ok) {
         const errText = await response.text();
-        throw { response: { status: response.status, data: errText } };
+        throw new Error(`Failed to take task: ${response.status} ${errText}`);
       }
       const data = await response.json();
       console.log(`🎯 Task taken: ${taskId}`);
@@ -202,12 +172,12 @@ class ShadowClonePlugin extends EventEmitter {
     try {
       const response = await fetch(`${this.config.boardUrl}/api/tasks/${taskId}/complete`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ result }),
       });
       if (!response.ok) {
         const errText = await response.text();
-        throw { response: { status: response.status, data: errText } };
+        throw new Error(`Failed to complete task: ${response.status} ${errText}`);
       }
       const data = await response.json();
       console.log(`✅ Task completed: ${taskId}`);
@@ -224,12 +194,12 @@ class ShadowClonePlugin extends EventEmitter {
     try {
       const response = await fetch(`${this.config.boardUrl}/api/tasks/${taskId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify(updates),
       });
       if (!response.ok) {
         const errText = await response.text();
-        throw { response: { status: response.status, data: errText } };
+        throw new Error(`Failed to update task: ${response.status} ${errText}`);
       }
       const data = await response.json();
       return data;
@@ -270,7 +240,7 @@ class ShadowClonePlugin extends EventEmitter {
       );
       if (!response.ok) {
         const errText = await response.text();
-        throw { response: { status: response.status, data: errText } };
+        throw new Error(`GitLab MR failed: ${response.status} ${errText}`);
       }
       const data = await response.json();
       return data;
@@ -280,56 +250,12 @@ class ShadowClonePlugin extends EventEmitter {
     }
   }
 
-  async commitToGitLab(
-    projectId: string,
-    filePath: string,
-    content: string,
-    commitMessage: string,
-    branch: string = 'main'
-  ): Promise<boolean> {
-    if (!this.config.gitlabToken) {
-      console.error('GitLab token not configured');
-      return false;
-    }
-
-    try {
-      const encodedPath = encodeURIComponent(filePath);
-      const response = await fetch(
-        `${this.config.gitlabUrl}/api/v4/projects/${projectId}/repository/files/${encodedPath}`,
-        {
-          method: 'PUT',
-          headers: {
-            'PRIVATE-TOKEN': this.config.gitlabToken,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            branch,
-            content,
-            commit_message: commitMessage,
-          }),
-        }
-      );
-      if (!response.ok) {
-        const errText = await response.text();
-        throw { response: { status: response.status, data: errText } };
-      }
-      console.log(`📤 Committed to GitLab: ${filePath}`);
-      return true;
-    } catch (err) {
-      console.error('Failed to commit to GitLab:', err);
-      return false;
-    }
-  }
-
   destroy(): void {
     if (this.pollingTimer) {
       clearInterval(this.pollingTimer);
     }
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
-    }
-    if (this.ws) {
-      this.ws.close();
     }
     console.log('🔮 ShadowMe Plugin destroyed');
   }
