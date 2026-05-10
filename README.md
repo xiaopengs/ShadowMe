@@ -244,6 +244,64 @@ SSE_CONNECTION_TIMEOUT=300
 
 插件位于 `plugins/ShadowMe-plugin/`，负责连接 Claude Code 和看板系统，实现任务监听、领取、执行和结果回传。
 
+#### 方式一：在 Claude Code VS Code 扩展中使用（推荐）
+
+1. **安装 Claude Code 扩展**
+
+   在 VS Code 扩展商店中搜索并安装官方的 [Claude Code 扩展](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code)
+
+2. **配置 ShadowMe 插件**
+
+   - 打开 VS Code
+   - 点击活动栏的 **Claude 图标** 或按 `Cmd+Shift+P` (Mac) / `Ctrl+Shift+P` (Windows/Linux)
+   - 选择 **Claude Code: Open in New Tab**
+   - 在 Claude Code 对话框中输入：
+     ```
+     /plugins
+     ```
+
+3. **添加本地插件**
+
+   在插件管理界面中：
+   - 点击 **Marketplaces** 标签
+   - 添加本地插件目录：
+     ```
+     /workspace/ShadowMe/plugins/ShadowMe-plugin
+     ```
+   - 或者在启动 Claude Code 时指定：
+     ```bash
+     claude --plugin-dir /workspace/ShadowMe/plugins/ShadowMe-plugin
+     ```
+
+4. **安装插件**
+
+   - 在插件列表中找到 **shadowme**
+   - 点击 **Install** 按钮
+   - 选择安装范围（用户、项目或本地）
+
+5. **使用 ShadowMe 技能**
+
+   安装后，可以使用以下技能：
+
+   | 技能 | 描述 |
+   |------|------|
+   | `/shadowme:status` | 检查 ShadowMe 看板状态和连接 |
+   | `/shadowme:list-tasks` | 列出看板上的所有任务 |
+   | `/shadowme:create-task` | 创建新任务到看板 |
+   | `/shadowme:take-task` | 领取看板任务 |
+   | `/shadowme:complete-task` | 完成看板任务并提交结果 |
+
+6. **配置环境变量**
+
+   首次使用前，在插件目录创建 `.env` 文件：
+   ```bash
+   cd /workspace/ShadowMe/plugins/ShadowMe-plugin
+   cp .env.example .env
+   # 编辑 .env 配置看板地址
+   ```
+
+#### 方式二：作为独立 Node.js 库使用
+
 #### 1. 安装插件
 
 ```bash

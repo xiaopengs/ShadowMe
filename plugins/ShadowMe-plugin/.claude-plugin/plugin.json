@@ -1,0 +1,14 @@
+{
+  "name": "shadowme",
+  "description": "ShadowMe - Smart shadow avatar collaboration board integration",
+  "version": "1.0.0",
+  "author": {
+    "name": "ShadowMe Team"
+  },
+  "homepage": "https://github.com/xiaopengs/ShadowMe",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xiaopengs/ShadowMe.git"
+  },
+  "license": "MIT"
+}

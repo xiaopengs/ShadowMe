@@ -10,7 +10,28 @@ Claude Code 插件，让影子分身能够接收看板任务、自动执行并�
 - 🔗 **GitLab 集成** - 自动创建 MR、提交代码
 - 💓 **心跳保持** - 实时保持与看板的连接
 
-## 安装
+## 安装方式
+
+### 方式一：作为 Claude Code 插件安装（推荐）
+
+1. 确保已安装 [Claude Code VS Code 扩展](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code)
+
+2. 在 VS Code 中打开 Claude Code，输入：
+   ```
+   /plugins
+   ```
+
+3. 在插件管理界面中，点击 **Marketplaces** 标签，添加本地插件目录：
+   ```
+   /workspace/ShadowMe/plugins/ShadowMe-plugin
+   ```
+
+4. 或者，在启动 Claude Code 时指定插件目录：
+   ```bash
+   claude --plugin-dir /workspace/ShadowMe/plugins/ShadowMe-plugin
+   ```
+
+### 方式二：作为独立 Node.js 库安装
 
 ```bash
 cd plugins/ShadowMe-plugin
@@ -19,13 +40,16 @@ npm install
 
 ## 配置
 
-复制 `.env.example` 为 `.env` 并配置：
+### Claude Code 插件配置
 
-```bash
-cp .env.example .env
-```
+首次使用时，需要配置 ShadowMe 看板地址。可以通过以下方式：
 
-配置项说明：
+1. 创建 `.env` 文件：
+   ```bash
+   cp .env.example .env
+   ```
+
+2. 编辑 `.env` 文件：
 
 | 变量 | 描述 | 默认值 |
 |------|------|--------|
@@ -37,17 +61,25 @@ cp .env.example .env
 
 ## 使用方式
 
+### 在 Claude Code VS Code 扩展中使用
+
+安装插件后，可以使用以下技能：
+
+| 技能 | 描述 |
+|------|------|
+| `/shadowme:status` | 检查 ShadowMe 看板状态和连接 |
+| `/shadowme:list-tasks` | 列出看板上的所有任务 |
+| `/shadowme:create-task` | 创建新任务到看板 |
+| `/shadowme:take-task` | 领取看板任务 |
+| `/shadowme:complete-task` | 完成看板任务并提交结果 |
+
 ### 作为独立服务运行
 
 ```bash
 npm run dev
 ```
 
-### 集成到 Claude Code
-
-在你的 Claude Code 配置中添加插件路径。
-
-### CLI 命令
+### CLI 命令（独立模式）
 
 ```bash
 /shadow help          # 显示帮助
@@ -58,11 +90,18 @@ npm run dev
 /shadow complete <id> # 完成任务
 ```
 
-## API 接口
+## API 接口（作为 Node.js 库）
 
 ### 获取任务列表
 
 ```typescript
+import ShadowClonePlugin from './src/index';
+
+const plugin = new ShadowClonePlugin({
+  boardUrl: 'http://localhost:3000'
+});
+await plugin.initialize();
+
 const tasks = await plugin.getTasks('pending');
 ```
 
@@ -108,6 +147,48 @@ plugin.on('task:taken', (task) => {
 plugin.on('task:completed', (task) => {
   console.log('已完成:', task.title);
 });
+```
+
+## 插件结构
+
+```
+ShadowMe-plugin/
+├── .claude-plugin/
+│   └── plugin.json          # 插件清单
+├── skills/
+│   ├── status/
+│   │   └── SKILL.md         # 检查状态技能
+│   ├── list-tasks/
+│   │   └── SKILL.md         # 列出任务技能
+│   ├── create-task/
+│   │   └── SKILL.md         # 创建任务技能
+│   ├── take-task/
+│   │   └── SKILL.md         # 领取任务技能
+│   └── complete-task/
+│       └── SKILL.md         # 完成任务技能
+├── src/
+│   ├── index.ts             # Node.js 库主入口
+│   ├── commands.ts          # CLI 命令
+│   └── types.ts             # 类型定义
+├── .env.example             # 环境变量示例
+├── package.json
+└── README.md
+```
+
+## 开发与测试
+
+### 本地测试插件
+
+```bash
+# 启动 Claude Code 并加载本地插件
+claude --plugin-dir /workspace/ShadowMe/plugins/ShadowMe-plugin
+```
+
+### 重新加载插件
+
+在 Claude Code 中输入：
+```
+/reload-plugins
 ```
 
 ## 许可证
