@@ -67,6 +67,8 @@ ShadowMe 由三大模块组成：
 
 ## 📡 API 接口一览
 
+> 完整的通信协议文档见 [docs/PROTOCOL.md](docs/PROTOCOL.md)
+
 <p align="center">
   <img src="docs/api-overview.svg" alt="API Overview" width="800" />
 </p>
@@ -246,10 +248,13 @@ WORKING_DIRECTORY=D:\AICoding\trea
 | 命令 | 功能 |
 |------|------|
 | `/shadowme:status` | 检查看板状态 |
+| `/shadowme:connect` | 首次连接配置 |
+| `/shadowme:poll` | 拉取待领取任务 |
 | `/shadowme:list-tasks` | 列出所有任务 |
 | `/shadowme:create-task` | 创建任务 |
 | `/shadowme:take-task` | 领取任务 |
 | `/shadowme:complete-task` | 完成任务 |
+| `/shadowme:log` | 发送工作日志 |
 
 ---
 
@@ -276,10 +281,13 @@ ShadowMe/
 │   ├── lib/                        # 工具库（db, logger, sse-manager...）
 │   └── types/                      # TypeScript 类型
 ├── plugins/
-│   └── ShadowMe-plugin/            # Claude Code 插件
+│   └── ShadowMe-plugin/            # Claude Code 插件（唯一插件目录）
 │       ├── .claude-plugin/         # 插件清单
-│       ├── skills/                 # 插件技能
-│       └── src/                    # 插件源码
+│       ├── skills/                 # 技能（8个）
+│       ├── agents/                 # Agent 定义
+│       ├── hooks/                  # 事件钩子
+│       ├── scripts/                # Shell 脚本
+│       └── src/                    # Node.js 源码
 ├── .claude-plugin/
 │   └── marketplace.json            # 插件市场清单
 ├── data/                           # SQLite 数据库（自动生成）
