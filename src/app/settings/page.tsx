@@ -32,7 +32,6 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
-import { useTheme, THEMES } from '@/context/ThemeContext';
 import { useToast } from '@/components/ui/Toast';
 
 const STORAGE_KEY = 'shadowme-settings';
@@ -87,7 +86,6 @@ const defaultSettings: SettingsFormData = {
 };
 
 export default function SettingsPage() {
-  const { theme, setTheme, themeInfo } = useTheme();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'core' | 'integrations'>('core');
   const [showToken, setShowToken] = useState(false);

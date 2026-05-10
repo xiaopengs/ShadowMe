@@ -4,7 +4,7 @@
  */
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
@@ -365,19 +365,12 @@ const KanbanColumn = memo(function KanbanColumn({
 });
 
 export default function DashboardPage() {
-  const { state, fetchTasks } = useApp();
-  const [isLoading, setIsLoading] = useState(true);
+  const { state } = useApp();
   const prefersReducedMotion = useReducedMotion();
 
-  useEffect(() => {
-    if (!state.isLoading && state.tasks.length === 0 && !state.error) {
-      fetchTasks();
-    }
-  }, []);
-
-  const pendingTasks = state.tasks.filter(t => t.status === 'pending');
-  const inProgressTasks = state.tasks.filter(t => t.status === 'in_progress');
-  const completedTasks = state.tasks.filter(t => t.status === 'completed' || t.status === 'closed');
+  const pendingTasks = useMemo(() => state.tasks.filter(t => t.status === 'pending'), [state.tasks]);
+  const inProgressTasks = useMemo(() => state.tasks.filter(t => t.status === 'in_progress'), [state.tasks]);
+  const completedTasks = useMemo(() => state.tasks.filter(t => t.status === 'completed' || t.status === 'closed'), [state.tasks]);
 
   const hasRealTasks = state.tasks.length > 0;
   const displayPending = pendingTasks;
@@ -489,7 +482,7 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Loading State */}
-        {isLoading && (
+        {state.isLoading && (
           <motion.div 
             className="flex items-center justify-center h-64"
             initial={{ opacity: 0 }}
@@ -507,7 +500,7 @@ export default function DashboardPage() {
         )}
 
         {/* Empty State */}
-        {!isLoading && !hasRealTasks && (
+        {!state.isLoading && !hasRealTasks && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -547,7 +540,7 @@ export default function DashboardPage() {
         )}
 
         {/* Kanban Board */}
-        {!isLoading && hasRealTasks && (
+        {!state.isLoading && hasRealTasks && (
           <motion.div 
             className="grid grid-cols-1 md:grid-cols-[minmax(280px,1fr)_minmax(280px,1fr)_minmax(280px,1fr)] gap-4 md:gap-6 h-[calc(100vh-420px)] min-h-[500px]"
             initial={{ opacity: 0 }}

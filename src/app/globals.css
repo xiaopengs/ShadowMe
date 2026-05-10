@@ -1,10 +1,9 @@
 @import "tailwindcss";
 
 /* ========================================
-   SHADOWME MULTI-THEME DESIGN SYSTEM
+   SHADOWME DESIGN SYSTEM - SAHARA THEME
    ======================================== */
 
-/* ============ SAHARA THEME (Default) ============ */
 [data-theme="sahara"] {
   --color-primary: #c2652a;
   --color-primary-container: #e08850;
@@ -59,10 +58,10 @@
   --color-on-success: #ffffff;
   --color-on-success-container: #166534;
 
-  --font-headline: 'EB Garamond', serif;
-  --font-display: 'EB Garamond', serif;
-  --font-body: 'Manrope', sans-serif;
-  --font-label: 'Manrope', sans-serif;
+  --font-headline: 'Inter', sans-serif;
+  --font-display: 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-label: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   --radius-sm: 4px;
@@ -75,448 +74,65 @@
   --shadow-glow: 0 0 15px rgba(194, 101, 42, 0.3);
 }
 
-/* ============ SHADOW CLONE DASHBOARD THEME ============ */
-[data-theme="shadow-clone"] {
-  --color-primary: #d0bcff;
-  --color-primary-container: #a078ff;
-  --color-on-primary: #3c0091;
-  --color-on-primary-container: #340080;
-  --color-secondary: #4cd7f6;
-  --color-secondary-container: #03b5d3;
-  --color-on-secondary: #003640;
-  --color-on-secondary-container: #00424e;
-  --color-tertiary: #ffafd3;
-  --color-tertiary-container: #e364a7;
-  --color-on-tertiary: #620040;
-  --color-on-tertiary-container: #560038;
-  --color-surface: #0b1326;
-  --color-surface-dim: #0b1326;
-  --color-surface-bright: #31394d;
-  --color-surface-container-lowest: #060e20;
-  --color-surface-container-low: #131b2e;
-  --color-surface-container: #171f33;
-  --color-surface-container-high: #222a3d;
-  --color-surface-container-highest: #2d3449;
-  --color-on-surface: #dae2fd;
-  --color-on-surface-variant: #cbc3d7;
-  --color-on-background: #dae2fd;
-  --color-background: #0b1326;
-  --color-outline: #958ea0;
-  --color-outline-variant: #494454;
-  --color-surface-variant: #2d3449;
-  --color-surface-tint: #d0bcff;
-  --color-error: #ffb4ab;
-  --color-on-error: #690005;
-  --color-error-container: #93000a;
-  --color-on-error-container: #ffdad6;
-  --color-inverse-surface: #dae2fd;
-  --color-inverse-on-surface: #283044;
-  --color-inverse-primary: #6d3bd7;
-  --color-primary-fixed: #e9ddff;
-  --color-primary-fixed-dim: #d0bcff;
-  --color-on-primary-fixed: #23005c;
-  --color-on-primary-fixed-variant: #5516be;
-  --color-secondary-fixed: #acedff;
-  --color-secondary-fixed-dim: #4cd7f6;
-  --color-on-secondary-fixed: #001f26;
-  --color-on-secondary-fixed-variant: #004e5c;
-  --color-tertiary-fixed: #ffd8e7;
-  --color-tertiary-fixed-dim: #ffafd3;
-  --color-on-tertiary-fixed: #3d0026;
-  --color-on-tertiary-fixed-variant: #85145a;
-
-  --color-success: #4ade80;
-  --color-success-container: #166534;
-  --color-on-success: #003d14;
-  --color-on-success-container: #86efac;
-
-  --font-headline: 'Geist', 'Inter', sans-serif;
-  --font-display: 'Geist', 'Inter', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-label: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-full: 9999px;
-
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
-  --shadow-glow: 0 0 15px rgba(208, 188, 255, 0.4);
-}
-
-/* ============ GEIST DARK THEME ============ */
-[data-theme="geist-dark"] {
-  --color-primary: #cebdff;
-  --color-primary-container: #5b3ea8;
-  --color-on-primary: #482995;
-  --color-on-primary-container: #e9deff;
-  --color-secondary: #c6c5cf;
-  --color-secondary-container: #3a3b43;
-  --color-on-secondary: #3f4048;
-  --color-on-secondary-container: #bfbec8;
-  --color-tertiary: #cdffe3;
-  --color-tertiary-container: #6bffc1;
-  --color-on-tertiary: #006948;
-  --color-on-tertiary-container: #006042;
-  --color-surface: #0d0e14;
-  --color-surface-dim: #0d0e14;
-  --color-surface-bright: #2a2b38;
-  --color-surface-container-lowest: #000000;
-  --color-surface-container-low: #12131b;
-  --color-surface-container: #181922;
-  --color-surface-container-high: #1e1f29;
-  --color-surface-container-highest: #242531;
-  --color-on-surface: #e5e4f5;
-  --color-on-surface-variant: #aaaab9;
-  --color-on-background: #e5e4f5;
-  --color-background: #0d0e14;
-  --color-outline: #747483;
-  --color-outline-variant: #464754;
-  --color-surface-variant: #242531;
-  --color-surface-tint: #cebdff;
-  --color-error: #f97386;
-  --color-on-error: #490013;
-  --color-error-container: #871c34;
-  --color-on-error-container: #ff97a3;
-
-  --font-headline: 'Geist', sans-serif;
-  --font-display: 'Geist', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-label: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-full: 9999px;
-
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 15px rgba(206, 189, 255, 0.4);
-}
-
-/* ============ NEON TOKYO THEME ============ */
-[data-theme="neon-tokyo"] {
-  --color-primary: #ff2d78;
-  --color-primary-container: #d41d62;
-  --color-on-primary: #ffffff;
-  --color-on-primary-container: #ffe6ec;
-  --color-secondary: #00ffcc;
-  --color-secondary-container: #00ccaa;
-  --color-on-secondary: #003328;
-  --color-on-secondary-container: #ccffee;
-  --color-tertiary: #ffe04a;
-  --color-tertiary-container: #e6c800;
-  --color-on-tertiary: #3d3200;
-  --color-on-tertiary-container: #fff5cc;
-  --color-surface: #0a0a12;
-  --color-surface-dim: #0a0a12;
-  --color-surface-bright: #1a1a2e;
-  --color-surface-container-lowest: #050508;
-  --color-surface-container-low: #0d0d18;
-  --color-surface-container: #12121f;
-  --color-surface-container-high: #18182a;
-  --color-surface-container-highest: #1f1f35;
-  --color-on-surface: #e5e5f5;
-  --color-on-surface-variant: #a5a5c5;
-  --color-on-background: #e5e5f5;
-  --color-background: #0a0a12;
-  --color-outline: #555575;
-  --color-outline-variant: #353545;
-  --color-surface-variant: #1f1f35;
-  --color-surface-tint: #ff2d78;
-  --color-error: #ff6b8a;
-  --color-on-error: #ffffff;
-  --color-error-container: #8b1a2a;
-  --color-on-error-container: #ffe6ec;
-
-  --font-headline: 'Sora', sans-serif;
-  --font-display: 'Sora', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-label: 'Space Grotesk', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-full: 9999px;
-
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(255, 45, 120, 0.5);
-}
-
-/* ============ CANDY THEME ============ */
-[data-theme="candy"] {
-  --color-primary: #e040a0;
-  --color-primary-container: #d13090;
-  --color-on-primary: #ffffff;
-  --color-on-primary-container: #ffe6f5;
-  --color-secondary: #7c52aa;
-  --color-secondary-container: #6c42aa;
-  --color-on-secondary: #ffffff;
-  --color-on-secondary-container: #f0e6ff;
-  --color-tertiary: #0096cc;
-  --color-tertiary-container: #0088bb;
-  --color-on-tertiary: #ffffff;
-  --color-on-tertiary-container: #e6f5ff;
-  --color-surface: #fef7ff;
-  --color-surface-dim: #f5f0fa;
-  --color-surface-bright: #ffffff;
-  --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #fff8ff;
-  --color-surface-container: #fef7ff;
-  --color-surface-container-high: #f8f2fc;
-  --color-surface-container-highest: #f2ecf8;
-  --color-on-surface: #3a2040;
-  --color-on-surface-variant: #6a5070;
-  --color-on-background: #3a2040;
-  --color-background: #fef7ff;
-  --color-outline: #a890b0;
-  --color-outline-variant: #d8d0e0;
-  --color-surface-variant: #f2ecf8;
-  --color-surface-tint: #e040a0;
-  --color-error: #d83050;
-  --color-on-error: #ffffff;
-  --color-error-container: #ffe6ec;
-  --color-on-error-container: #6a1020;
-
-  --font-headline: 'DM Sans', sans-serif;
-  --font-display: 'DM Sans', sans-serif;
-  --font-body: 'DM Sans', sans-serif;
-  --font-label: 'DM Sans', sans-serif;
-  --font-mono: 'DM Sans', monospace;
-
-  --radius-sm: 12px;
-  --radius-md: 16px;
-  --radius-lg: 20px;
-  --radius-xl: 24px;
-  --radius-full: 9999px;
-
-  --shadow-card: 0 4px 20px rgba(224, 64, 160, 0.15);
-  --shadow-glow: 0 4px 20px rgba(224, 64, 160, 0.3);
-}
-
-/* ============ GLACIER THEME ============ */
-[data-theme="glacier"] {
-  --color-primary: #7dd3fc;
-  --color-primary-container: #5bc4eb;
-  --color-on-primary: #003040;
-  --color-on-primary-container: #cceeff;
-  --color-secondary: #c8a0f0;
-  --color-secondary-container: #b890e0;
-  --color-on-secondary: #3a2050;
-  --color-on-secondary-container: #f0e6ff;
-  --color-tertiary: #6ee7b7;
-  --color-tertiary-container: #50d7a0;
-  --color-on-tertiary: #104030;
-  --color-on-tertiary-container: #e6fff5;
-  --color-surface: #0a0e1a;
-  --color-surface-dim: #0a0e1a;
-  --color-surface-bright: #1a2035;
-  --color-surface-container-lowest: #050810;
-  --color-surface-container-low: #0c1020;
-  --color-surface-container: #101428;
-  --color-surface-container-high: #151a30;
-  --color-surface-container-highest: #1a2038;
-  --color-on-surface: #e0e8ff;
-  --color-on-surface-variant: #a0b0d0;
-  --color-on-background: #e0e8ff;
-  --color-background: #0a0e1a;
-  --color-outline: #5a6a8a;
-  --color-outline-variant: #2a3548;
-  --color-surface-variant: #1a2038;
-  --color-surface-tint: #7dd3fc;
-  --color-error: #ff8090;
-  --color-on-error: #ffffff;
-  --color-error-container: #8b2020;
-  --color-on-error-container: #ffe6ea;
-
-  --font-headline: 'Inter', sans-serif;
-  --font-display: 'Inter', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-label: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-full: 9999px;
-
-  --shadow-card: 0 8px 32px rgba(125, 211, 252, 0.08);
-  --shadow-glow: 0 0 30px rgba(125, 211, 252, 0.15);
-}
-
-/* ============ LUMINA TECH THEME ============ */
-[data-theme="lumina-tech"] {
-  --color-primary: #7bd1fa;
-  --color-primary-container: #5bc0eb;
-  --color-on-primary: #00465d;
-  --color-on-primary-container: #cceeff;
-  --color-secondary: #b1ddf7;
-  --color-secondary-container: #9ad0e8;
-  --color-on-secondary: #215065;
-  --color-on-secondary-container: #e6f5ff;
-  --color-tertiary: #e0bfff;
-  --color-tertiary-container: #c8a8f0;
-  --color-on-tertiary: #56337a;
-  --color-on-tertiary-container: #f5e6ff;
-  --color-surface: #040e21;
-  --color-surface-dim: #040e21;
-  --color-surface-bright: #1c2c4a;
-  --color-surface-container-lowest: #000000;
-  --color-surface-container-low: #071328;
-  --color-surface-container: #0c1931;
-  --color-surface-container-high: #111f39;
-  --color-surface-container-highest: #162541;
-  --color-on-surface: #dce5ff;
-  --color-on-surface-variant: #a1abc4;
-  --color-on-background: #dce5ff;
-  --color-background: #040e21;
-  --color-outline: #6b758d;
-  --color-outline-variant: #3e485e;
-  --color-surface-variant: #162541;
-  --color-surface-tint: #7bd1fa;
-  --color-error: #ff716c;
-  --color-on-error: #490006;
-  --color-error-container: #9f0519;
-  --color-on-error-container: #ffa8a3;
-
-  --font-headline: 'Inter', sans-serif;
-  --font-display: 'Inter', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-label: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-full: 9999px;
-
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 20px rgba(123, 209, 250, 0.3);
-
-  --color-success: #4ade80;
-  --color-success-container: #166534;
-  --color-on-success: #003d14;
-  --color-on-success-container: #86efac;
-}
-
-/* ============ ALEXANDRIA THEME ============ */
-[data-theme="alexandria"] {
-  --color-primary: #094cb2;
-  --color-primary-container: #0a5cc4;
-  --color-on-primary: #ffffff;
-  --color-on-primary-container: #e6f0ff;
-  --color-secondary: #6d5e00;
-  --color-secondary-container: #5d4e00;
-  --color-on-secondary: #ffffff;
-  --color-on-secondary-container: #fff5cc;
-  --color-tertiary: #7c5e10;
-  --color-tertiary-container: #6c4e00;
-  --color-on-tertiary: #ffffff;
-  --color-on-tertiary-container: #fff5dd;
-  --color-surface: #faf8f5;
-  --color-surface-dim: #f0ede8;
-  --color-surface-bright: #ffffff;
-  --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #faf8f5;
-  --color-surface-container: #f5f2ed;
-  --color-surface-container-high: #f0ede8;
-  --color-surface-container-highest: #eae7e2;
-  --color-on-surface: #1a1a1a;
-  --color-on-surface-variant: #5a5a5a;
-  --color-on-background: #1a1a1a;
-  --color-background: #faf8f5;
-  --color-outline: #9a9a9a;
-  --color-outline-variant: #dadad8;
-  --color-surface-variant: #eae7e2;
-  --color-surface-tint: #094cb2;
-  --color-error: #c41a1a;
-  --color-on-error: #ffffff;
-  --color-error-container: #ffe6e6;
-  --color-on-error-container: #6a1010;
-
-  --font-headline: 'Noto Serif', serif;
-  --font-display: 'Noto Serif', serif;
-  --font-body: 'Inter', sans-serif;
-  --font-label: 'Public Sans', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-full: 9999px;
-
-  --shadow-card: 0 4px 24px rgba(26, 26, 26, 0.06);
-  --shadow-glow: none;
-}
-
 /* ========================================
    CSS THEME TOKENS FOR TAILWIND
    ======================================== */
 :root {
-  /* Fallback theme (Shadow Clone Dark) */
-  --color-primary: #d0bcff;
-  --color-primary-container: #a078ff;
-  --color-on-primary: #3c0091;
-  --color-on-primary-container: #340080;
-  --color-secondary: #4cd7f6;
-  --color-secondary-container: #03b5d3;
-  --color-on-secondary: #003640;
-  --color-on-secondary-container: #00424e;
-  --color-tertiary: #ffafd3;
-  --color-tertiary-container: #e364a7;
-  --color-on-tertiary: #620040;
-  --color-on-tertiary-container: #560038;
-  --color-surface: #0b1326;
-  --color-surface-dim: #0b1326;
-  --color-surface-bright: #31394d;
-  --color-surface-container-lowest: #060e20;
-  --color-surface-container-low: #131b2e;
-  --color-surface-container: #171f33;
-  --color-surface-container-high: #222a3d;
-  --color-surface-container-highest: #2d3449;
-  --color-on-surface: #dae2fd;
-  --color-on-surface-variant: #cbc3d7;
-  --color-on-background: #dae2fd;
-  --color-background: #0b1326;
-  --color-outline: #958ea0;
-  --color-outline-variant: #494454;
-  --color-surface-variant: #2d3449;
-  --color-surface-tint: #d0bcff;
-  --color-error: #ffb4ab;
-  --color-on-error: #690005;
-  --color-error-container: #93000a;
-  --color-on-error-container: #ffdad6;
-  --color-inverse-surface: #dae2fd;
-  --color-inverse-on-surface: #283044;
-  --color-inverse-primary: #6d3bd7;
-  --color-primary-fixed: #e9ddff;
-  --color-primary-fixed-dim: #d0bcff;
-  --color-on-primary-fixed: #23005c;
-  --color-on-primary-fixed-variant: #5516be;
-  --color-secondary-fixed: #acedff;
-  --color-secondary-fixed-dim: #4cd7f6;
-  --color-on-secondary-fixed: #001f26;
-  --color-on-secondary-fixed-variant: #004e5c;
-  --color-tertiary-fixed: #ffd8e7;
-  --color-tertiary-fixed-dim: #ffafd3;
-  --color-on-tertiary-fixed: #3d0026;
-  --color-on-tertiary-fixed-variant: #85145a;
+  --color-primary: #c2652a;
+  --color-primary-container: #e08850;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #fbe8d8;
+  --color-secondary: #78706a;
+  --color-secondary-container: #eae2da;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #605850;
+  --color-tertiary: #8c3c3c;
+  --color-tertiary-container: #d47070;
+  --color-on-tertiary: #ffffff;
+  --color-on-tertiary-container: #3a2020;
+  --color-surface: #faf5ee;
+  --color-surface-dim: #dcd6cc;
+  --color-surface-bright: #faf5ee;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f6f0e8;
+  --color-surface-container: #f2ece4;
+  --color-surface-container-high: #ece6dc;
+  --color-surface-container-highest: #e6e0d6;
+  --color-on-surface: #3a302a;
+  --color-on-surface-variant: #605850;
+  --color-on-background: #3a302a;
+  --color-background: #faf5ee;
+  --color-outline: #9a9088;
+  --color-outline-variant: #d8d0c8;
+  --color-surface-variant: #ece6dc;
+  --color-surface-tint: #c2652a;
+  --color-error: #c0392b;
+  --color-on-error: #ffffff;
+  --color-error-container: #fce4e0;
+  --color-on-error-container: #7a1a10;
+  --color-inverse-surface: #3a302a;
+  --color-inverse-on-surface: #faf5ee;
+  --color-inverse-primary: #f0a878;
+  --color-primary-fixed: #fbe8d8;
+  --color-primary-fixed-dim: #f0a878;
+  --color-on-primary-fixed: #401a08;
+  --color-on-primary-fixed-variant: #8a4518;
+  --color-secondary-fixed: #eae2da;
+  --color-secondary-fixed-dim: #cec6be;
+  --color-on-secondary-fixed: #2a2420;
+  --color-on-secondary-fixed-variant: #504840;
+  --color-tertiary-fixed: #fce0e0;
+  --color-tertiary-fixed-dim: #e8a0a0;
+  --color-on-tertiary-fixed: #2e1515;
+  --color-on-tertiary-fixed-variant: #6e3030;
 
-  --color-success: #4ade80;
-  --color-success-container: #166534;
-  --color-on-success: #003d14;
-  --color-on-success-container: #86efac;
+  --color-success: #16a34a;
+  --color-success-container: #dcfce7;
+  --color-on-success: #ffffff;
+  --color-on-success-container: #166534;
 
-  --font-headline: 'Geist', 'Inter', sans-serif;
-  --font-display: 'Geist', 'Inter', sans-serif;
+  --font-headline: 'Inter', sans-serif;
+  --font-display: 'Inter', sans-serif;
   --font-body: 'Inter', sans-serif;
   --font-label: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
@@ -527,8 +143,8 @@
   --radius-xl: 16px;
   --radius-full: 9999px;
 
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
-  --shadow-glow: 0 0 15px rgba(208, 188, 255, 0.4);
+  --shadow-card: 0 2px 16px rgba(58, 48, 42, 0.04);
+  --shadow-glow: 0 0 15px rgba(194, 101, 42, 0.3);
 }
 
 @theme inline {
@@ -573,10 +189,9 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Theme transition for all color-related properties */
 [data-theme],
 [data-theme] * {
-  transition: background-color 0.3s ease, 
+  transition: background-color 0.3s ease,
               color 0.3s ease,
               border-color 0.3s ease,
               box-shadow 0.3s ease;
@@ -587,7 +202,6 @@ body {
   color: var(--color-on-primary);
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -610,7 +224,6 @@ body {
    COMPONENT UTILITIES
    ======================================== */
 
-/* Glass Panel */
 .glass-panel {
   background-color: color-mix(in srgb, var(--color-surface-container-high) 80%, transparent);
   backdrop-filter: blur(12px);
@@ -618,7 +231,6 @@ body {
   border: 1px solid color-mix(in srgb, var(--color-outline-variant) 30%, transparent);
 }
 
-/* Glass Light */
 .glass-light {
   background-color: color-mix(in srgb, var(--color-surface-container) 60%, transparent);
   backdrop-filter: blur(16px) saturate(180%);
@@ -626,7 +238,6 @@ body {
   border: 1px solid color-mix(in srgb, var(--color-outline-variant) 20%, transparent);
 }
 
-/* Glass Medium */
 .glass-medium {
   background-color: color-mix(in srgb, var(--color-surface-container-high) 60%, transparent);
   backdrop-filter: blur(20px) saturate(150%);
@@ -635,7 +246,6 @@ body {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
-/* Glass Card */
 .glass-card {
   background-color: color-mix(in srgb, var(--color-surface-container) 80%, transparent);
   backdrop-filter: blur(16px) saturate(180%);
@@ -651,24 +261,12 @@ body {
   border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 
-/* Shadow Energy Glow */
 .shadow-energy-glow {
   box-shadow: var(--shadow-glow);
 }
 
-/* Sync Glow */
 .shadow-sync-glow {
   box-shadow: 0 0 15px var(--color-secondary);
-}
-
-/* Neon Glow (for Neon Tokyo) */
-[data-theme="neon-tokyo"] .neon-glow {
-  text-shadow: 0 0 8px currentColor;
-}
-
-[data-theme="neon-tokyo"] .neon-border {
-  border: 1px solid color-mix(in srgb, var(--color-primary) 50%, transparent);
-  box-shadow: inset 0 0 12px color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
 /* ========================================
@@ -694,7 +292,6 @@ body {
   font-family: var(--font-mono);
 }
 
-/* Code Label Style */
 .code-label {
   font-family: var(--font-mono);
   font-size: 13px;
@@ -702,7 +299,6 @@ body {
   line-height: 16px;
 }
 
-/* Status Mono Style */
 .status-mono {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -931,7 +527,6 @@ textarea.input-field {
   background-clip: text;
 }
 
-/* Card hover effects */
 .card-interactive {
   transition: all 0.2s ease;
 }
@@ -941,7 +536,6 @@ textarea.input-field {
   box-shadow: var(--shadow-card);
 }
 
-/* Priority badges */
 .priority-badge {
   display: inline-flex;
   align-items: center;
@@ -973,7 +567,6 @@ textarea.input-field {
   color: var(--color-outline);
 }
 
-/* Status indicators */
 .status-dot {
   width: 8px;
   height: 8px;
@@ -998,7 +591,6 @@ textarea.input-field {
    EXTRA ANIMATIONS
    ======================================== */
 
-/* Slow spin for sync icon */
 @keyframes spin-slow {
   from {
     transform: rotate(0deg);
@@ -1012,12 +604,10 @@ textarea.input-field {
   animation: spin-slow 3s linear infinite;
 }
 
-/* Energy line glow effect */
 .shadow-energy-line {
   box-shadow: 0 0 8px var(--color-primary), 0 0 15px var(--color-primary-container);
 }
 
-/* Filled icon style */
 .filled-icon {
   filter: drop-shadow(0 0 4px currentColor);
 }
@@ -1060,7 +650,6 @@ textarea.input-field {
    REDUCED MOTION SUPPORT
    ======================================== */
 
-/* Respect user's motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1075,14 +664,12 @@ textarea.input-field {
    FOCUS STATES WITH GLOW
    ======================================== */
 
-/* Focus ring with glow effect */
 .focus-glow:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 40%, transparent),
               0 0 15px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
-/* Input focus glow animation */
 @keyframes input-focus-glow {
   0%, 100% {
     box-shadow: 0 0 0 2px var(--color-primary), 0 0 8px color-mix(in srgb, var(--color-primary) 20%, transparent);
@@ -1101,7 +688,6 @@ textarea.input-field {
    CHECKBOX & TOGGLE ANIMATIONS
    ======================================== */
 
-/* Animated checkbox */
 .checkbox-animated {
   position: relative;
   width: 20px;
@@ -1141,7 +727,6 @@ textarea.input-field {
   }
 }
 
-/* Toggle switch */
 .toggle-animated {
   position: relative;
   width: 44px;
@@ -1177,7 +762,6 @@ textarea.input-field {
    STAGGER ANIMATIONS
    ======================================== */
 
-/* Stagger fade in */
 @keyframes stagger-fade-in {
   from {
     opacity: 0;
@@ -1247,7 +831,6 @@ textarea.input-field {
    SLIDE INDICATORS
    ======================================== */
 
-/* Left slide indicator for active nav items */
 .slide-indicator {
   position: relative;
 }
@@ -1278,13 +861,11 @@ textarea.input-field {
    SCALE FEEDBACK
    ======================================== */
 
-/* Button press feedback */
 .scale-press:active {
   transform: scale(0.97);
   transition: transform 0.1s ease;
 }
 
-/* Card press feedback */
 .card-press:active {
   transform: scale(0.99);
   transition: transform 0.15s ease;
@@ -1327,32 +908,27 @@ textarea.input-field {
    ACCESSIBILITY - FOCUS VISIBLE STATES
    ======================================== */
 
-/* Global focus-visible styling for keyboard navigation */
 *:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
   border-radius: 2px;
 }
 
-/* Remove outline for mouse/pointer users */
 *:focus:not(:focus-visible) {
   outline: none;
 }
 
-/* Specific focus styles for interactive elements */
 a:focus-visible,
 button:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
-/* Links get underline on focus for better visibility */
 a:focus-visible {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-/* Form elements focus */
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
@@ -1364,7 +940,6 @@ textarea:focus-visible {
    ACCESSIBILITY - SKIP LINK
    ======================================== */
 
-/* Skip to content link - visible only on focus */
 .skip-link {
   position: absolute;
   top: -100%;
@@ -1389,7 +964,6 @@ textarea:focus-visible {
    ACCESSIBILITY - VISUALLY HIDDEN
    ======================================== */
 
-/* Screen reader only - hides from visual but accessible */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -1402,7 +976,6 @@ textarea:focus-visible {
   border: 0;
 }
 
-/* Show when focused (for skip links) */
 .sr-only-focusable:focus,
 .sr-only-focusable:focus-within {
   position: static;
@@ -1419,7 +992,6 @@ textarea:focus-visible {
    ACCESSIBILITY - LIVE REGIONS
    ======================================== */
 
-/* Live region for screen reader announcements */
 .live-region {
   position: absolute;
   width: 1px;
@@ -1465,7 +1037,6 @@ textarea:focus-visible {
    ======================================== */
 
 :root {
-  /* Aliases for common color names used in components */
   --color-text-primary: var(--color-on-surface);
   --color-text-secondary: var(--color-on-surface-variant);
   --color-text-muted: var(--color-outline);

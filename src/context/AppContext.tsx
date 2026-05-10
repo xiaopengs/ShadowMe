@@ -193,7 +193,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     fetchShadowStatus();
     const interval = setInterval(fetchShadowStatus, 30000);
     return () => clearInterval(interval);
-  }, [fetchTasks]);
+  }, []);
 
   return (
     <AppContext.Provider value={{
