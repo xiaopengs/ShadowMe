@@ -75,42 +75,8 @@ function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           <div className="relative">
             <div className="absolute inset-0 rounded-full bg-[var(--color-primary)]/20 blur-xl" aria-hidden="true" />
             <div className="absolute inset-0 rounded-full bg-[var(--color-primary)]/10 blur-md animate-pulse" aria-hidden="true" />
-            <div className="relative w-11 h-11 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] flex items-center justify-center border-2 border-[var(--color-primary)] shadow-[0_0_12px_rgba(var(--color-primary-rgb, 194,101,42),0.5)] overflow-hidden" style={{ imageRendering: 'pixelated' }}>
-              <svg width="20" height="20" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="1" y="1" width="1" height="1" fill="white"/>
-                <rect x="2" y="1" width="1" height="1" fill="white"/>
-                <rect x="3" y="1" width="1" height="1" fill="white"/>
-                <rect x="4" y="1" width="1" height="1" fill="white"/>
-                <rect x="5" y="1" width="1" height="1" fill="white"/>
-                <rect x="6" y="1" width="1" height="1" fill="white"/>
-                <rect x="1" y="2" width="1" height="1" fill="white"/>
-                <rect x="6" y="2" width="1" height="1" fill="white"/>
-                <rect x="1" y="3" width="1" height="1" fill="white"/>
-                <rect x="2" y="3" width="1" height="1" fill="white"/>
-                <rect x="3" y="3" width="1" height="1" fill="white"/>
-                <rect x="4" y="3" width="1" height="1" fill="white"/>
-                <rect x="5" y="3" width="1" height="1" fill="white"/>
-                <rect x="6" y="3" width="1" height="1" fill="white"/>
-                <rect x="1" y="4" width="1" height="1" fill="white"/>
-                <rect x="6" y="4" width="1" height="1" fill="white"/>
-                <rect x="1" y="5" width="1" height="1" fill="white"/>
-                <rect x="2" y="5" width="1" height="1" fill="white"/>
-                <rect x="3" y="5" width="1" height="1" fill="white"/>
-                <rect x="4" y="5" width="1" height="1" fill="white"/>
-                <rect x="5" y="5" width="1" height="1" fill="white"/>
-                <rect x="6" y="5" width="1" height="1" fill="white"/>
-                <rect x="1" y="6" width="1" height="1" fill="white"/>
-                <rect x="6" y="6" width="1" height="1" fill="white"/>
-                <rect x="1" y="7" width="1" height="1" fill="white"/>
-                <rect x="2" y="7" width="1" height="1" fill="white"/>
-                <rect x="3" y="7" width="1" height="1" fill="white"/>
-                <rect x="4" y="7" width="1" height="1" fill="white"/>
-                <rect x="5" y="7" width="1" height="1" fill="white"/>
-                <rect x="6" y="7" width="1" height="1" fill="white"/>
-                <rect x="5" y="5" width="1" height="1" fill="white"/>
-                <rect x="6" y="6" width="1" height="1" fill="white"/>
-                <rect x="5" y="7" width="1" height="1" fill="white"/>
-              </svg>
+            <div className="relative w-11 h-11 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] flex items-center justify-center border-2 border-[var(--color-primary)] shadow-[0_0_12px_rgba(var(--color-primary-rgb, 194,101,42),0.5)] overflow-hidden">
+              <Bot size={22} className="text-white" aria-hidden="true" />
             </div>
             <span
               className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[var(--color-surface-container-low)] ${
@@ -125,7 +91,7 @@ function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="font-headline text-base font-bold text-[var(--color-primary)] truncate tracking-tight">
-              Shadow Clone Alpha
+              Shadow Me
             </h1>
             <div className="flex items-center gap-1.5">
               <StatusIndicator status={state.shadow.status} />
