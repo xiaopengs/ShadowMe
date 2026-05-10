@@ -68,11 +68,25 @@ function createTables(db: Database) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      key_text TEXT NOT NULL,
+      key_hash TEXT NOT NULL,
+      key_prefix TEXT NOT NULL,
+      permissions TEXT DEFAULT 'webhook',
+      last_used_at TEXT,
+      created_at TEXT NOT NULL,
+      expires_at TEXT,
+      created_by TEXT DEFAULT 'owner'
+    );
+
     CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
     CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at);
     CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority);
     CREATE INDEX IF NOT EXISTS idx_logs_task_id ON logs(task_id);
     CREATE INDEX IF NOT EXISTS idx_task_messages_task_id ON task_messages(task_id);
+    CREATE INDEX IF NOT EXISTS idx_api_keys_created_at ON api_keys(created_at);
   `);
 }
 
@@ -124,4 +138,122 @@ export function closeDatabase(): void {
     dbInstance = null;
     logger.info('Database connection closed');
   }
+}
+
+// ===========================================
+// API Key Database Operations
+// ===========================================
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  key_text: string;
+  key_hash: string;
+  key_prefix: string;
+  permissions: string;
+  last_used_at: string | null;
+  created_at: string;
+  expires_at: string | null;
+  created_by: string;
+}
+
+export interface ApiKeyCreateInput {
+  id: string;
+  name: string;
+  key_text: string;
+  key_hash: string;
+  key_prefix: string;
+  permissions?: string;
+  expires_at?: string;
+}
+
+export interface ApiKeyPublic {
+  id: string;
+  name: string;
+  key_prefix: string;
+  permissions: string;
+  last_used_at: string | null;
+  created_at: string;
+  expires_at: string | null;
+}
+
+// Extended public info with full key text (for viewing)
+export interface ApiKeyWithText extends ApiKeyPublic {
+  key_text: string;
+}
+
+export function createApiKey(input: ApiKeyCreateInput): ApiKey {
+  const db = getDatabase();
+  const now = new Date().toISOString();
+  
+  db.prepare(`
+    INSERT INTO api_keys (id, name, key_text, key_hash, key_prefix, permissions, created_at, expires_at, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    input.id,
+    input.name,
+    input.key_text,
+    input.key_hash,
+    input.key_prefix,
+    input.permissions || 'webhook',
+    now,
+    input.expires_at || null,
+    'owner'
+  );
+
+  return db.prepare('SELECT * FROM api_keys WHERE id = ?').get(input.id) as ApiKey;
+}
+
+export function getAllApiKeys(): ApiKeyPublic[] {
+  const db = getDatabase();
+  const keys = db.prepare(`
+    SELECT id, name, key_prefix, permissions, last_used_at, created_at, expires_at
+    FROM api_keys
+    ORDER BY created_at DESC
+  `).all() as ApiKeyPublic[];
+  
+  return keys;
+}
+
+export function getApiKeyById(id: string): ApiKey | undefined {
+  const db = getDatabase();
+  return db.prepare('SELECT * FROM api_keys WHERE id = ?').get(id) as ApiKey | undefined;
+}
+
+export function getApiKeyByIdWithText(id: string): ApiKeyWithText | undefined {
+  const db = getDatabase();
+  const key = db.prepare('SELECT * FROM api_keys WHERE id = ?').get(id) as ApiKey | undefined;
+  if (!key) return undefined;
+  return {
+    id: key.id,
+    name: key.name,
+    key_prefix: key.key_prefix,
+    permissions: key.permissions,
+    last_used_at: key.last_used_at,
+    created_at: key.created_at,
+    expires_at: key.expires_at,
+    key_text: key.key_text,
+  };
+}
+
+export function getApiKeyByHash(keyHash: string): ApiKey | undefined {
+  const db = getDatabase();
+  return db.prepare('SELECT * FROM api_keys WHERE key_hash = ?').get(keyHash) as ApiKey | undefined;
+}
+
+export function updateApiKeyLastUsed(id: string): void {
+  const db = getDatabase();
+  const now = new Date().toISOString();
+  db.prepare('UPDATE api_keys SET last_used_at = ? WHERE id = ?').run(now, id);
+}
+
+export function deleteApiKey(id: string): boolean {
+  const db = getDatabase();
+  const result = db.prepare('DELETE FROM api_keys WHERE id = ?').run(id);
+  return result.changes > 0;
+}
+
+export function isApiKeyExpired(key: ApiKey): boolean {
+  if (!key.expires_at) return false;
+  return new Date(key.expires_at) < new Date();
 }

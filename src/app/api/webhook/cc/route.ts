@@ -6,8 +6,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'crypto';
 import { processCCMessage, validateCCMessage, getCCProtocolVersion } from '@/lib/cc-protocol';
 import { broadcastToChannel } from '@/lib/sse-manager';
+import { getApiKeyByHash, updateApiKeyLastUsed, isApiKeyExpired } from '@/lib/db';
 import { logger } from '@/lib/logger';
 
 const webhookLogger = logger.child({ module: 'api/webhook/cc' });
@@ -18,28 +20,67 @@ const API_KEY_HEADER = 'x-cc-api-key';
 const API_KEY_PARAM = 'api_key';
 
 /**
- * Validate API Key from request
+ * Get the API key from request (header or query param)
  */
-function validateAPIKey(request: NextRequest): boolean {
-  if (!CC_API_KEY) {
-    webhookLogger.warn('CC_WEBHOOK_API_KEY not configured, allowing all requests');
-    return true; // Allow if not configured (development mode)
-  }
-
+function getRequestApiKey(request: NextRequest): string | null {
   // Check header first
   const headerKey = request.headers.get(API_KEY_HEADER);
-  if (headerKey && headerKey === CC_API_KEY) {
-    return true;
+  if (headerKey) {
+    return headerKey;
   }
 
   // Check query param
   const url = new URL(request.url);
   const paramKey = url.searchParams.get(API_KEY_PARAM);
-  if (paramKey && paramKey === CC_API_KEY) {
-    return true;
+  if (paramKey) {
+    return paramKey;
   }
 
-  return false;
+  return null;
+}
+
+/**
+ * Validate API Key from request
+ * Priority:
+ * 1. Database API Keys (hash comparison)
+ * 2. Environment variable CC_WEBHOOK_API_KEY (backward compatibility)
+ * 3. Allow all if no configuration (development mode)
+ */
+async function validateAPIKey(request: NextRequest): Promise<{ valid: boolean; keyId?: string }> {
+  const requestKey = getRequestApiKey(request);
+  
+  if (!requestKey) {
+    // No key provided
+    if (!CC_API_KEY) {
+      webhookLogger.warn('No API key provided and CC_WEBHOOK_API_KEY not configured, allowing all requests (development mode)');
+      return { valid: true }; // Development mode
+    }
+    return { valid: false };
+  }
+
+  // 1. First try database API keys (hash comparison)
+  const keyHash = createHash('sha256').update(requestKey).digest('hex');
+  const dbKey = getApiKeyByHash(keyHash);
+  
+  if (dbKey) {
+    // Check expiration
+    if (isApiKeyExpired(dbKey)) {
+      webhookLogger.warn('Expired API key used', { keyId: dbKey.id });
+      return { valid: false };
+    }
+    
+    // Update last used timestamp (async, don't wait)
+    updateApiKeyLastUsed(dbKey.id);
+    webhookLogger.info('Request authenticated via database API key', { keyId: dbKey.id });
+    return { valid: true, keyId: dbKey.id };
+  }
+
+  // 2. Fallback to environment variable (backward compatibility)
+  if (requestKey === CC_API_KEY) {
+    return { valid: true };
+  }
+
+  return { valid: false };
 }
 
 /**
@@ -49,7 +90,8 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   // Validate API Key
-  if (!validateAPIKey(request)) {
+  const authResult = await validateAPIKey(request);
+  if (!authResult.valid) {
     webhookLogger.warn('Unauthorized webhook attempt', {
       ip: request.headers.get('x-forwarded-for') || 'unknown',
     });
@@ -137,7 +179,8 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   // Validate API Key
-  if (!validateAPIKey(request)) {
+  const authResult = await validateAPIKey(request);
+  if (!authResult.valid) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }

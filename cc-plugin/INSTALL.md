@@ -90,16 +90,18 @@ kubectl apply -f deployment.yaml
 ### 2. 获取 API Key
 
 1. 登录 ShadowMe 看板
-2. 进入「设置」→「API Keys」
-3. 创建新的 API Key
-4. 复制 Key（格式：`sk_live_xxxxxxxx`）
+2. 进入「Settings」→「Integration Console」
+3. 在 "API Keys" 区域点击 "Generate New Key"
+4. 输入 Key 名称（如 "MacBook CC Plugin"）
+5. 选择权限（默认 webhook）
+6. 点击生成后复制显示的 Key（格式：`sm_xxxxxxxx...`）
 
 ### 3. 配置连接
 
 在 Claude Code 中执行：
 
 ```
-/shadow-connect https://your-shadowme-server.com sk_live_xxxxxxxxxxxxx
+/shadow-connect https://your-shadowme-server.com sm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 配置将被保存到 `~/.shadowme/config`：
@@ -107,7 +109,7 @@ kubectl apply -f deployment.yaml
 ```bash
 cat ~/.shadowme/config
 # SHADOWME_URL="https://your-shadowme-server.com"
-# SHADOWME_API_KEY="sk_live_xxxxxxxxxxxxx"
+# SHADOWME_API_KEY="sm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 # SHADOWME_SHADOW_ID="shadow-001"
 ```
 

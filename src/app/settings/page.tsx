@@ -23,13 +23,34 @@ import {
   HardDrive,
   Shield,
   Plug,
-  Folder
+  Folder,
+  Key,
+  Plus,
+  Copy,
+  Trash2,
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useTheme, THEMES } from '@/context/ThemeContext';
 import { useToast } from '@/components/ui/Toast';
 
 const STORAGE_KEY = 'shadowme-settings';
+
+// API Key types
+interface ApiKeyInfo {
+  id: string;
+  name: string;
+  key_prefix: string;
+  permissions: string;
+  last_used_at: string | null;
+  created_at: string;
+  expires_at: string | null;
+}
+
+interface ApiKeyWithText extends ApiKeyInfo {
+  key_text: string;
+}
 
 interface SettingsFormData {
   gitlabUrl: string;
@@ -75,6 +96,135 @@ export default function SettingsPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   const [formData, setFormData] = useState<SettingsFormData>(defaultSettings);
+
+  // API Keys state
+  const [apiKeys, setApiKeys] = useState<ApiKeyInfo[]>([]);
+  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
+  const [keyTexts, setKeyTexts] = useState<Record<string, string>>({});
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [newKeyName, setNewKeyName] = useState('');
+  const [newKeyPermission, setNewKeyPermission] = useState('webhook');
+  const [isCreatingKey, setIsCreatingKey] = useState(false);
+  const [isLoadingKeys, setIsLoadingKeys] = useState(false);
+
+  // Load API keys on mount
+  useEffect(() => {
+    if (activeTab === 'integrations') {
+      loadApiKeys();
+    }
+  }, [activeTab]);
+
+  const loadApiKeys = async () => {
+    setIsLoadingKeys(true);
+    try {
+      const res = await fetch('/api/api-keys');
+      const data = await res.json();
+      if (data.success) {
+        setApiKeys(data.keys || []);
+      }
+    } catch (e) {
+      console.error('Failed to load API keys:', e);
+    } finally {
+      setIsLoadingKeys(false);
+    }
+  };
+
+  const toggleKeyVisibility = async (keyId: string) => {
+    if (visibleKeys.has(keyId)) {
+      setVisibleKeys(prev => {
+        const next = new Set(prev);
+        next.delete(keyId);
+        return next;
+      });
+    } else {
+      // Fetch full key text
+      if (!keyTexts[keyId]) {
+        try {
+          const res = await fetch(`/api/api-keys?id=${keyId}`);
+          const data = await res.json();
+          if (data.success) {
+            setKeyTexts(prev => ({ ...prev, [keyId]: data.key.key_text }));
+          }
+        } catch (e) {
+          console.error('Failed to fetch key text:', e);
+          return;
+        }
+      }
+      setVisibleKeys(prev => new Set(prev).add(keyId));
+    }
+  };
+
+  const handleCreateApiKey = async () => {
+    if (!newKeyName.trim()) {
+      showToast('Please enter a name for the API key', 'error');
+      return;
+    }
+
+    setIsCreatingKey(true);
+    try {
+      const res = await fetch('/api/api-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newKeyName.trim(),
+          permissions: newKeyPermission,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('API key created successfully', 'success');
+        setShowCreateModal(false);
+        setNewKeyName('');
+        setNewKeyPermission('webhook');
+        setKeyTexts(prev => ({ ...prev, [data.key.id]: data.key.key }));
+        setVisibleKeys(prev => new Set(prev).add(data.key.id));
+        await loadApiKeys();
+      } else {
+        showToast(data.error || 'Failed to create API key', 'error');
+      }
+    } catch (e) {
+      console.error('Failed to create API key:', e);
+      showToast('Failed to create API key', 'error');
+    } finally {
+      setIsCreatingKey(false);
+    }
+  };
+
+  const handleDeleteApiKey = async (keyId: string) => {
+    try {
+      const res = await fetch(`/api/api-keys/${keyId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('API key deleted', 'success');
+        setShowDeleteConfirm(null);
+        setVisibleKeys(prev => {
+          const next = new Set(prev);
+          next.delete(keyId);
+          return next;
+        });
+        setKeyTexts(prev => {
+          const next = { ...prev };
+          delete next[keyId];
+          return next;
+        });
+        await loadApiKeys();
+      } else {
+        showToast(data.error || 'Failed to delete API key', 'error');
+      }
+    } catch (e) {
+      console.error('Failed to delete API key:', e);
+      showToast('Failed to delete API key', 'error');
+    }
+  };
+
+  const copyKeyToClipboard = (keyId: string) => {
+    const keyText = keyTexts[keyId];
+    if (keyText) {
+      navigator.clipboard.writeText(keyText);
+      showToast('Copied to clipboard', 'success');
+    }
+  };
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -505,6 +655,120 @@ export default function SettingsPage() {
               </div>
             </motion.section>
 
+            {/* API Keys Management */}
+            <motion.section
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="col-span-1 md:col-span-12 bg-[var(--color-surface-container-low)] rounded-xl p-6 border border-[var(--color-outline-variant)]/40"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[var(--color-primary)]/10 flex items-center justify-center">
+                    <Key size={20} className="text-[var(--color-primary)]" />
+                  </div>
+                  <div>
+                    <h2 className="font-headline text-base font-semibold text-[var(--color-on-surface)]">
+                      API Keys
+                    </h2>
+                    <p className="font-body text-[10px] text-[var(--color-on-surface-variant)]">
+                      Manage keys for Claude Code plugin authentication
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-primary)] text-white rounded-lg font-body text-xs font-medium hover:bg-[var(--color-primary)]/90 transition-colors"
+                >
+                  <Plus size={14} />
+                  Generate New Key
+                </button>
+              </div>
+
+              {isLoadingKeys ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw size={20} className="animate-spin text-[var(--color-outline)]" />
+                </div>
+              ) : apiKeys.length === 0 ? (
+                <div className="text-center py-8 bg-[var(--color-surface-container-lowest)] rounded-lg border border-dashed border-[var(--color-outline-variant)]/30">
+                  <Key size={32} className="mx-auto mb-3 text-[var(--color-outline)]" />
+                  <p className="font-body text-sm text-[var(--color-on-surface-variant)] mb-1">
+                    No API keys generated yet
+                  </p>
+                  <p className="font-body text-xs text-[var(--color-outline)]">
+                    Create one for your Claude Code plugin
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {/* Header */}
+                  <div className="grid grid-cols-12 gap-3 px-3 py-2 text-[10px] font-medium text-[var(--color-outline)] uppercase tracking-wider">
+                    <div className="col-span-3">Name</div>
+                    <div className="col-span-4">Key</div>
+                    <div className="col-span-2">Last Used</div>
+                    <div className="col-span-2">Created</div>
+                    <div className="col-span-1"></div>
+                  </div>
+                  {/* Key List */}
+                  {apiKeys.map((key) => (
+                    <div
+                      key={key.id}
+                      className="grid grid-cols-12 gap-3 items-center px-3 py-3 bg-[var(--color-surface-container-lowest)] rounded-lg border border-[var(--color-outline-variant)]/20"
+                    >
+                      <div className="col-span-3">
+                        <p className="font-body text-xs font-medium text-[var(--color-on-surface)] truncate">
+                          {key.name}
+                        </p>
+                        <p className="font-body text-[10px] text-[var(--color-outline)]">
+                          {key.permissions}
+                        </p>
+                      </div>
+                      <div className="col-span-4 flex items-center gap-2">
+                        <code className="font-mono text-xs text-[var(--color-on-surface)] truncate flex-1">
+                          {visibleKeys.has(key.id) 
+                            ? (keyTexts[key.id] || '...') 
+                            : key.key_prefix}
+                        </code>
+                        <button
+                          onClick={() => toggleKeyVisibility(key.id)}
+                          className="p-1.5 text-[var(--color-outline)] hover:text-[var(--color-on-surface)] hover:bg-[var(--color-surface-variant)] rounded transition-colors"
+                          title={visibleKeys.has(key.id) ? 'Hide key' : 'Show key'}
+                        >
+                          {visibleKeys.has(key.id) ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                        {visibleKeys.has(key.id) && (
+                          <button
+                            onClick={() => copyKeyToClipboard(key.id)}
+                            className="p-1.5 text-[var(--color-outline)] hover:text-[var(--color-on-surface)] hover:bg-[var(--color-surface-variant)] rounded transition-colors"
+                            title="Copy to clipboard"
+                          >
+                            <Copy size={14} />
+                          </button>
+                        )}
+                      </div>
+                      <div className="col-span-2 font-body text-xs text-[var(--color-on-surface-variant)]">
+                        {key.last_used_at 
+                          ? new Date(key.last_used_at).toLocaleDateString()
+                          : 'Never'}
+                      </div>
+                      <div className="col-span-2 font-body text-xs text-[var(--color-on-surface-variant)]">
+                        {new Date(key.created_at).toLocaleDateString()}
+                      </div>
+                      <div className="col-span-1 flex justify-end">
+                        <button
+                          onClick={() => setShowDeleteConfirm(key.id)}
+                          className="p-1.5 text-[var(--color-outline)] hover:text-[var(--color-error)] hover:bg-[var(--color-error-container)]/20 rounded transition-colors"
+                          title="Delete key"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.section>
+
             {/* Local Mount */}
             <motion.section
               initial={{ opacity: 0, y: 20 }}
@@ -543,6 +807,141 @@ export default function SettingsPage() {
                 </div>
               </div>
             </motion.section>
+          </div>
+        )}
+
+        {/* Create API Key Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div 
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setShowCreateModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="relative bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-md border border-[var(--color-outline-variant)]/40 shadow-xl"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[var(--color-primary)]/10 flex items-center justify-center">
+                    <Key size={20} className="text-[var(--color-primary)]" />
+                  </div>
+                  <h3 className="font-headline text-lg font-semibold text-[var(--color-on-surface)]">
+                    Generate New API Key
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="p-1.5 text-[var(--color-outline)] hover:text-[var(--color-on-surface)] hover:bg-[var(--color-surface-variant)] rounded-lg transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block font-body text-xs font-medium text-[var(--color-on-surface)] mb-1.5">
+                    Key Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newKeyName}
+                    onChange={(e) => setNewKeyName(e.target.value)}
+                    placeholder="e.g., MacBook CC Plugin"
+                    className="w-full px-3 py-2 bg-[var(--color-surface-container-lowest)] border border-[var(--color-outline-variant)]/30 rounded-lg text-[var(--color-on-surface)] font-body text-sm focus:outline-none focus:border-[var(--color-primary)]"
+                    autoFocus
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-body text-xs font-medium text-[var(--color-on-surface)] mb-1.5">
+                    Permissions
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={newKeyPermission}
+                      onChange={(e) => setNewKeyPermission(e.target.value)}
+                      className="w-full px-3 py-2 bg-[var(--color-surface-container-lowest)] border border-[var(--color-outline-variant)]/30 rounded-lg text-[var(--color-on-surface)] font-body text-sm focus:outline-none focus:border-[var(--color-primary)] appearance-none cursor-pointer"
+                    >
+                      <option value="webhook">Webhook (default)</option>
+                      <option value="full">Full Access</option>
+                    </select>
+                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-outline)] pointer-events-none" />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setShowCreateModal(false)}
+                    className="flex-1 px-4 py-2 bg-[var(--color-surface-container-low)] border border-[var(--color-outline-variant)]/30 rounded-lg font-body text-sm font-medium text-[var(--color-on-surface)] hover:bg-[var(--color-surface-variant)] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateApiKey}
+                    disabled={isCreatingKey || !newKeyName.trim()}
+                    className="flex-1 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg font-body text-sm font-medium hover:bg-[var(--color-primary)]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isCreatingKey ? (
+                      <>
+                        <RefreshCw size={14} className="animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Key size={14} />
+                        Generate
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div 
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setShowDeleteConfirm(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="relative bg-[var(--color-surface)] rounded-xl p-6 w-full max-w-sm border border-[var(--color-outline-variant)]/40 shadow-xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-[var(--color-error)]/10 flex items-center justify-center">
+                  <AlertTriangle size={20} className="text-[var(--color-error)]" />
+                </div>
+                <h3 className="font-headline text-lg font-semibold text-[var(--color-on-surface)]">
+                  Delete API Key
+                </h3>
+              </div>
+
+              <p className="font-body text-sm text-[var(--color-on-surface-variant)] mb-6">
+                Are you sure you want to delete this API key? This action cannot be undone.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(null)}
+                  className="flex-1 px-4 py-2 bg-[var(--color-surface-container-low)] border border-[var(--color-outline-variant)]/30 rounded-lg font-body text-sm font-medium text-[var(--color-on-surface)] hover:bg-[var(--color-surface-variant)] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteApiKey(showDeleteConfirm)}
+                  className="flex-1 px-4 py-2 bg-[var(--color-error)] text-white rounded-lg font-body text-sm font-medium hover:bg-[var(--color-error)]/90 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={14} />
+                  Delete
+                </button>
+              </div>
+            </motion.div>
           </div>
         )}
       </div>
