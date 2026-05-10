@@ -1,5 +1,21 @@
 import { EventEmitter } from 'events';
-import type { Task, ShadowConfig, TaskResult, GitLabMR } from './types';
+import { randomUUID } from 'crypto';
+import type { 
+  Task, 
+  ShadowConfig, 
+  TaskResult, 
+  GitLabMR,
+  CCMessage,
+  CCBaseMessage,
+  CCTaskAssignMessage,
+  CCTaskProgressMessage,
+  CCTaskCompleteMessage,
+  CCTaskErrorMessage,
+  CCLogMessage,
+  CCGitCommitMessage,
+  CCGitMRCreatedMessage,
+  CCSyncHeartbeatMessage
+} from './types';
 
 class ShadowClonePlugin extends EventEmitter {
   private config: ShadowConfig;
@@ -248,6 +264,157 @@ class ShadowClonePlugin extends EventEmitter {
       console.error('Failed to create GitLab MR:', err);
       return null;
     }
+  }
+
+  // ===== Protocol Message Methods =====
+
+  /**
+   * Send a generic CC message via webhook
+   */
+  async sendMessage(message: CCMessage): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.config.boardUrl}/api/webhook/cc`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(message),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error(`Failed to send message: ${response.status} ${errText}`);
+        return false;
+      }
+
+      const result = await response.json();
+      console.log(`📤 Message sent: ${message.type}`, { messageId: message.messageId, success: result.success });
+      return result.success;
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Create base message structure
+   */
+  private createBaseMessage(type: CCMessage['type']): CCBaseMessage {
+    return {
+      type,
+      timestamp: new Date().toISOString(),
+      messageId: randomUUID(),
+      senderId: 'shadow-1',
+    };
+  }
+
+  /**
+   * Send task.assign message
+   */
+  async sendTaskAssign(taskId: string, taskTitle: string): Promise<boolean> {
+    const message: CCTaskAssignMessage = {
+      ...this.createBaseMessage('task.assign'),
+      taskId,
+      taskTitle,
+    };
+    return this.sendMessage(message);
+  }
+
+  /**
+   * Send task.progress message
+   */
+  async sendTaskProgress(taskId: string, progress: number, message: string): Promise<boolean> {
+    const progressMessage: CCTaskProgressMessage = {
+      ...this.createBaseMessage('task.progress'),
+      taskId,
+      progress,
+      message,
+    };
+    return this.sendMessage(progressMessage);
+  }
+
+  /**
+   * Send task.complete message
+   */
+  async sendTaskComplete(taskId: string, summary: string, commitSha?: string, duration?: string): Promise<boolean> {
+    const message: CCTaskCompleteMessage = {
+      ...this.createBaseMessage('task.complete'),
+      taskId,
+      summary,
+      commitSha,
+      duration,
+    };
+    return this.sendMessage(message);
+  }
+
+  /**
+   * Send task.error message
+   */
+  async sendTaskError(taskId: string, error: string, stack?: string): Promise<boolean> {
+    const message: CCTaskErrorMessage = {
+      ...this.createBaseMessage('task.error'),
+      taskId,
+      error,
+      stack,
+    };
+    return this.sendMessage(message);
+  }
+
+  /**
+   * Send log message
+   */
+  async sendLog(taskId: string, content: string, level: 'info' | 'progress' | 'warning' | 'error' = 'info'): Promise<boolean> {
+    const message: CCLogMessage = {
+      ...this.createBaseMessage('log'),
+      taskId,
+      content,
+      level,
+    };
+    return this.sendMessage(message);
+  }
+
+  /**
+   * Send git.commit message
+   */
+  async sendGitCommit(taskId: string, commitSha: string, commitMessage: string, files?: string[]): Promise<boolean> {
+    const message: CCGitCommitMessage = {
+      ...this.createBaseMessage('git.commit'),
+      taskId,
+      commitSha,
+      message: commitMessage,
+      files,
+    };
+    return this.sendMessage(message);
+  }
+
+  /**
+   * Send git.mr_created message
+   */
+  async sendGitMRCreated(
+    taskId: string, 
+    title: string, 
+    url?: string, 
+    mrId?: number, 
+    mrIid?: number
+  ): Promise<boolean> {
+    const message: CCGitMRCreatedMessage = {
+      ...this.createBaseMessage('git.mr_created'),
+      taskId,
+      title,
+      url,
+      mrId,
+      mrIid,
+    };
+    return this.sendMessage(message);
+  }
+
+  /**
+   * Send sync.heartbeat message
+   */
+  async sendSyncHeartbeat(status: 'online' | 'busy' | 'idle' = 'online'): Promise<boolean> {
+    const message: CCSyncHeartbeatMessage = {
+      ...this.createBaseMessage('sync.heartbeat'),
+      status,
+    };
+    return this.sendMessage(message);
   }
 
   destroy(): void {

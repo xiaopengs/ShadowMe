@@ -64,3 +64,88 @@ export interface GitLabCommit {
   author_email: string;
   created_at: string;
 }
+
+// Protocol Message Types
+export type CCMessageType =
+  | 'task.assign'
+  | 'task.progress'
+  | 'task.complete'
+  | 'task.error'
+  | 'log'
+  | 'git.commit'
+  | 'git.mr_created'
+  | 'sync.heartbeat';
+
+export interface CCBaseMessage {
+  type: CCMessageType;
+  timestamp: string;
+  messageId: string;
+  senderId: string;
+}
+
+export interface CCTaskAssignMessage extends CCBaseMessage {
+  type: 'task.assign';
+  taskId: string;
+  taskTitle: string;
+}
+
+export interface CCTaskProgressMessage extends CCBaseMessage {
+  type: 'task.progress';
+  taskId: string;
+  progress: number;
+  message: string;
+}
+
+export interface CCTaskCompleteMessage extends CCBaseMessage {
+  type: 'task.complete';
+  taskId: string;
+  summary: string;
+  commitSha?: string;
+  duration?: string;
+}
+
+export interface CCTaskErrorMessage extends CCBaseMessage {
+  type: 'task.error';
+  taskId: string;
+  error: string;
+  stack?: string;
+}
+
+export interface CCLogMessage extends CCBaseMessage {
+  type: 'log';
+  taskId: string;
+  content: string;
+  level?: 'info' | 'progress' | 'warning' | 'error';
+}
+
+export interface CCGitCommitMessage extends CCBaseMessage {
+  type: 'git.commit';
+  taskId: string;
+  commitSha: string;
+  message: string;
+  files?: string[];
+}
+
+export interface CCGitMRCreatedMessage extends CCBaseMessage {
+  type: 'git.mr_created';
+  taskId: string;
+  mrId?: number;
+  mrIid?: number;
+  url?: string;
+  title: string;
+}
+
+export interface CCSyncHeartbeatMessage extends CCBaseMessage {
+  type: 'sync.heartbeat';
+  status: 'online' | 'busy' | 'idle';
+}
+
+export type CCMessage =
+  | CCTaskAssignMessage
+  | CCTaskProgressMessage
+  | CCTaskCompleteMessage
+  | CCTaskErrorMessage
+  | CCLogMessage
+  | CCGitCommitMessage
+  | CCGitMRCreatedMessage
+  | CCSyncHeartbeatMessage;

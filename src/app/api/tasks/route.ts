@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { all, get, run } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { broadcastToChannel } from '@/lib/sse-manager';
 import type { Task, TaskStatus } from '@/types';
 
 const apiLogger = logger.child({ module: 'api/tasks' });
@@ -115,8 +116,30 @@ export async function POST(request: Request) {
     `, [id, 'created', createdBy, JSON.stringify({ type, priority }), now]);
 
     const row = await get('SELECT * FROM tasks WHERE id = ?', [id]);
+    const task = rowToTask(row);
+    
+    // Broadcast task.created event per protocol
+    broadcastToChannel('task', 'task.created', {
+      type: 'task.created',
+      task: {
+        id: task.id,
+        title: task.title,
+        type: task.type,
+        priority: task.priority,
+        status: task.status,
+        description: task.description,
+        createdBy: task.createdBy
+      }
+    });
+    
+    // Also update stats
+    broadcastToChannel('stats', 'stats.updated', {
+      type: 'stats.updated',
+      timestamp: new Date().toISOString()
+    });
+    
     apiLogger.info('Task created', { taskId: id, title: title.trim() });
-    return NextResponse.json(rowToTask(row), { status: 201 });
+    return NextResponse.json(task, { status: 201 });
   } catch (error) {
     apiLogger.error('Error creating task', error, { operation: 'POST' });
     return NextResponse.json({ error: 'Failed to create task' }, { status: 500 });

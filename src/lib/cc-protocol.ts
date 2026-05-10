@@ -11,6 +11,7 @@ export type CCMessageType =
   | 'task.complete'
   | 'task.error'
   | 'task.log'
+  | 'log'
   | 'git.commit'
   | 'git.mr_created'
   | 'sync.heartbeat'
@@ -26,9 +27,10 @@ export interface CCBaseMessage {
 export interface CCTaskAssignMessage extends CCBaseMessage {
   type: 'task.assign';
   taskId: string;
-  title: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  taskTitle?: string;
+  title?: string;
+  description?: string;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
   expectedDelivery?: string;
 }
 
@@ -43,10 +45,13 @@ export interface CCTaskProgressMessage extends CCBaseMessage {
 export interface CCTaskCompleteMessage extends CCBaseMessage {
   type: 'task.complete';
   taskId: string;
-  result: {
+  summary?: string;
+  commitSha?: string;
+  duration?: string;
+  result?: {
     type: 'merge_request' | 'commit' | 'document' | 'text';
     url?: string;
-    summary: string;
+    summary?: string;
     commitSha?: string;
   };
 }
@@ -56,32 +61,36 @@ export interface CCTaskErrorMessage extends CCBaseMessage {
   taskId: string;
   error: string;
   stack?: string;
-  recoverable: boolean;
+  recoverable?: boolean;
 }
 
 export interface CCTaskLogMessage extends CCBaseMessage {
-  type: 'task.log';
+  type: 'task.log' | 'log';
   taskId: string;
-  log: string;
-  level: 'info' | 'warn' | 'error' | 'debug';
+  log?: string;
+  content?: string;
+  level?: 'info' | 'warn' | 'error' | 'debug' | 'progress' | 'warning';
 }
 
 export interface CCGitCommitMessage extends CCBaseMessage {
   type: 'git.commit';
   taskId: string;
-  commitSha: string;
-  branch: string;
-  files: string[];
-  message: string;
+  commitSha?: string;
+  branch?: string;
+  files?: string[];
+  message?: string;
 }
 
 export interface CCGitMRCreatedMessage extends CCBaseMessage {
   type: 'git.mr_created';
   taskId: string;
-  mrUrl: string;
-  mrId: string;
-  sourceBranch: string;
-  targetBranch: string;
+  mrUrl?: string;
+  url?: string;
+  mrId?: string | number;
+  mrIid?: number;
+  sourceBranch?: string;
+  targetBranch?: string;
+  title?: string;
 }
 
 export interface CCSyncHeartbeatMessage extends CCBaseMessage {
@@ -130,6 +139,7 @@ export async function processCCMessage(message: CCMessage): Promise<{
         return await handleTaskError(message);
 
       case 'task.log':
+      case 'log':
         return await handleTaskLog(message);
 
       case 'git.commit':
@@ -174,11 +184,12 @@ async function handleTaskAssign(message: CCTaskAssignMessage): Promise<{ success
     WHERE id = 'shadow-1'
   `, [message.taskId, now]);
 
+  const taskTitle = message.taskTitle || message.title || 'Unknown Task';
   const msgId = randomUUID();
   await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
     VALUES (?, ?, 'system', ?, ?)
-  `, [msgId, message.taskId, `Task assigned to Claude Code at ${new Date(message.timestamp).toLocaleString()}`, now]);
+  `, [msgId, message.taskId, `Task "${taskTitle}" assigned to Claude Code at ${new Date(message.timestamp).toLocaleString()}`, now]);
 
   broadcastToChannel('task', 'task:updated', {
     taskId: message.taskId,
@@ -192,7 +203,7 @@ async function handleTaskAssign(message: CCTaskAssignMessage): Promise<{ success
     lastHeartbeat: now,
   });
 
-  ccLogger.info('Task assigned to CC', { taskId: message.taskId });
+  ccLogger.info('Task assigned to CC', { taskId: message.taskId, title: taskTitle });
   return { success: true };
 }
 
@@ -237,6 +248,13 @@ async function handleTaskProgress(message: CCTaskProgressMessage): Promise<{ suc
 async function handleTaskComplete(message: CCTaskCompleteMessage): Promise<{ success: boolean; error?: string }> {
   const now = new Date().toISOString();
 
+  // Support both formats: new (summary, commitSha, duration) and old (result object)
+  const resultData = message.result || {
+    type: 'text' as const,
+    summary: message.summary || '',
+    commitSha: message.commitSha,
+  };
+
   await run(`
     UPDATE tasks
     SET status = 'completed',
@@ -246,7 +264,7 @@ async function handleTaskComplete(message: CCTaskCompleteMessage): Promise<{ suc
     WHERE id = ?
   `, [
     now,
-    JSON.stringify(message.result),
+    JSON.stringify(resultData),
     now,
     message.taskId
   ]);
@@ -261,14 +279,22 @@ async function handleTaskComplete(message: CCTaskCompleteMessage): Promise<{ suc
 
   const msgId = randomUUID();
   let completionText = `Task completed successfully at ${new Date(message.timestamp).toLocaleString()}\n\n`;
-  completionText += `Result Type: ${message.result.type}\n`;
-  if (message.result.url) {
-    completionText += `URL: ${message.result.url}\n`;
+  
+  const summary = message.summary || resultData.summary || '';
+  const commitSha = message.commitSha || resultData.commitSha;
+  
+  if (message.duration) {
+    completionText += `Duration: ${message.duration}\n`;
   }
-  if (message.result.commitSha) {
-    completionText += `Commit: ${message.result.commitSha}\n`;
+  if (resultData.url) {
+    completionText += `URL: ${resultData.url}\n`;
   }
-  completionText += `\n${message.result.summary}`;
+  if (commitSha) {
+    completionText += `Commit: ${commitSha}\n`;
+  }
+  if (summary) {
+    completionText += `\n${summary}`;
+  }
 
   await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
@@ -277,7 +303,9 @@ async function handleTaskComplete(message: CCTaskCompleteMessage): Promise<{ suc
 
   broadcastToChannel('task', 'task:completed', {
     taskId: message.taskId,
-    result: message.result,
+    result: resultData,
+    summary,
+    commitSha,
     completedAt: now,
   });
 
@@ -291,20 +319,21 @@ async function handleTaskComplete(message: CCTaskCompleteMessage): Promise<{ suc
     timestamp: now,
   });
 
-  ccLogger.info('Task completed', { taskId: message.taskId, resultType: message.result.type });
+  ccLogger.info('Task completed', { taskId: message.taskId, summary, commitSha });
   return { success: true };
 }
 
 async function handleTaskError(message: CCTaskErrorMessage): Promise<{ success: boolean; error?: string }> {
   const now = new Date().toISOString();
+  const recoverable = message.recoverable ?? false;
 
-  if (message.recoverable) {
+  if (!recoverable) {
     await run(`
-      UPDATE tasks SET updated_at = ? WHERE id = ?
+      UPDATE tasks SET status = 'needs_feedback', updated_at = ? WHERE id = ?
     `, [now, message.taskId]);
   } else {
     await run(`
-      UPDATE tasks SET status = 'needs_feedback', updated_at = ? WHERE id = ?
+      UPDATE tasks SET updated_at = ? WHERE id = ?
     `, [now, message.taskId]);
   }
 
@@ -313,7 +342,7 @@ async function handleTaskError(message: CCTaskErrorMessage): Promise<{ success: 
   if (message.stack) {
     errorText += `Stack trace:\n${message.stack}\n\n`;
   }
-  errorText += message.recoverable
+  errorText += recoverable
     ? 'The task will continue processing...'
     : 'This error requires attention.';
 
@@ -325,7 +354,7 @@ async function handleTaskError(message: CCTaskErrorMessage): Promise<{ success: 
   broadcastToChannel('task', 'task:error', {
     taskId: message.taskId,
     error: message.error,
-    recoverable: message.recoverable,
+    recoverable,
     timestamp: now,
   });
 
@@ -337,19 +366,23 @@ async function handleTaskLog(message: CCTaskLogMessage): Promise<{ success: bool
   const now = new Date().toISOString();
 
   const msgId = randomUUID();
-  const prefix = message.level === 'error' ? '❌' :
-                  message.level === 'warn' ? '⚠️' :
-                  message.level === 'debug' ? '🔍' : '📝';
+  const logContent = message.content || message.log || '';
+  const logLevel = message.level || 'info';
+  
+  const prefix = logLevel === 'error' ? '❌' :
+                  logLevel === 'warn' ? '⚠️' :
+                  logLevel === 'debug' ? '🔍' : '📝';
 
   await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
     VALUES (?, ?, 'claude', ?, ?)
-  `, [msgId, message.taskId, `${prefix} ${message.log}`, now]);
+  `, [msgId, message.taskId, `${prefix} ${logContent}`, now]);
 
   broadcastToChannel('messages', 'message:log', {
     taskId: message.taskId,
-    level: message.level,
-    log: message.log,
+    level: logLevel,
+    log: logContent,
+    content: logContent,
     timestamp: now,
   });
 
@@ -359,11 +392,19 @@ async function handleTaskLog(message: CCTaskLogMessage): Promise<{ success: bool
 async function handleGitCommit(message: CCGitCommitMessage): Promise<{ success: boolean; error?: string }> {
   const now = new Date().toISOString();
 
+  const commitSha = message.commitSha || 'unknown';
+  const commitMessage = message.message || 'No commit message';
+  const files = message.files || [];
+
   const msgId = randomUUID();
-  let commitText = `📦 Commit: ${message.commitSha.slice(0, 8)}\n`;
-  commitText += `Branch: ${message.branch}\n`;
-  commitText += `Files: ${message.files.length}\n`;
-  commitText += `\n${message.message}`;
+  let commitText = `📦 Commit: ${commitSha.slice(0, 8)}\n`;
+  if (message.branch) {
+    commitText += `Branch: ${message.branch}\n`;
+  }
+  if (files.length > 0) {
+    commitText += `Files: ${files.length}\n`;
+  }
+  commitText += `\n${commitMessage}`;
 
   await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
@@ -372,23 +413,34 @@ async function handleGitCommit(message: CCGitCommitMessage): Promise<{ success: 
 
   broadcastToChannel('task', 'task:commit', {
     taskId: message.taskId,
-    commitSha: message.commitSha,
+    commitSha,
     branch: message.branch,
-    files: message.files,
+    files,
   });
 
-  ccLogger.info('Git commit from CC', { taskId: message.taskId, commitSha: message.commitSha });
+  ccLogger.info('Git commit from CC', { taskId: message.taskId, commitSha });
   return { success: true };
 }
 
 async function handleGitMRCreated(message: CCGitMRCreatedMessage): Promise<{ success: boolean; error?: string }> {
   const now = new Date().toISOString();
 
+  const mrUrl = message.mrUrl || message.url || '';
+  const mrId = message.mrId || message.mrIid || '';
+  const title = message.title || 'Merge Request';
+
   const msgId = randomUUID();
   let mrText = `🔀 Merge Request Created\n`;
-  mrText += `MR ID: ${message.mrId}\n`;
-  mrText += `URL: ${message.mrUrl}\n`;
-  mrText += `${message.sourceBranch} → ${message.targetBranch}`;
+  if (mrId) {
+    mrText += `MR ID: ${mrId}\n`;
+  }
+  if (mrUrl) {
+    mrText += `URL: ${mrUrl}\n`;
+  }
+  if (message.sourceBranch && message.targetBranch) {
+    mrText += `${message.sourceBranch} → ${message.targetBranch}`;
+  }
+  mrText += `\n${title}`;
 
   await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
@@ -402,9 +454,9 @@ async function handleGitMRCreated(message: CCGitMRCreatedMessage): Promise<{ suc
   `, [
     JSON.stringify({
       type: 'merge_request',
-      url: message.mrUrl,
-      summary: `Merge Request #${message.mrId} created`,
-      mrId: message.mrId,
+      url: mrUrl,
+      summary: title,
+      mrId,
     }),
     now,
     message.taskId
@@ -412,13 +464,16 @@ async function handleGitMRCreated(message: CCGitMRCreatedMessage): Promise<{ suc
 
   broadcastToChannel('task', 'task:mr_created', {
     taskId: message.taskId,
-    mrUrl: message.mrUrl,
-    mrId: message.mrId,
+    mrUrl,
+    url: mrUrl,
+    mrId,
+    mrIid: message.mrIid,
     sourceBranch: message.sourceBranch,
     targetBranch: message.targetBranch,
+    title,
   });
 
-  ccLogger.info('MR created from CC', { taskId: message.taskId, mrUrl: message.mrUrl });
+  ccLogger.info('MR created from CC', { taskId: message.taskId, mrUrl, title });
   return { success: true };
 }
 
@@ -523,7 +578,7 @@ export function validateCCMessage(data: unknown): data is CCMessage {
   if (typeof msg.senderId !== 'string') return false;
 
   const validTypes: CCMessageType[] = [
-    'task.assign', 'task.progress', 'task.complete', 'task.error', 'task.log',
+    'task.assign', 'task.progress', 'task.complete', 'task.error', 'task.log', 'log',
     'git.commit', 'git.mr_created', 'sync.heartbeat', 'sync.status'
   ];
 
