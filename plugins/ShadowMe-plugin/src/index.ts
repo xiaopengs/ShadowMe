@@ -32,7 +32,7 @@ class ShadowClonePlugin extends EventEmitter {
       gitlabToken: config.gitlabToken || process.env.GITLAB_TOKEN || '',
       gitlabDefaultProject: config.gitlabDefaultProject || process.env.GITLAB_DEFAULT_PROJECT || '',
       workingDirectory: config.workingDirectory || process.env.WORKING_DIRECTORY || '.',
-      autoTakeTasks: config.autoTakeTasks ?? false,
+      autoTakeTasks: config.autoTakeTasks ?? true,
       pollingInterval: config.pollingInterval || 10000,
     };
   }

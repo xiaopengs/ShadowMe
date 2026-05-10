@@ -7,5 +7,56 @@
   },
   "homepage": "https://github.com/xiaopengs/ShadowMe",
   "repository": "https://github.com/xiaopengs/ShadowMe.git",
-  "license": "MIT"
+  "license": "MIT",
+  "capabilities": {
+    "commands": {
+      "shadow": {
+        "description": "ShadowMe plugin commands",
+        "subcommands": {
+          "help": {
+            "description": "Show help message"
+          },
+          "start": {
+            "description": "Start ShadowMe task monitoring"
+          },
+          "status": {
+            "description": "Show current shadow status"
+          },
+          "tasks": {
+            "description": "List pending tasks"
+          },
+          "take": {
+            "description": "Take a specific task",
+            "params": [
+              {
+                "name": "taskId",
+                "type": "string",
+                "description": "Task ID to take"
+              }
+            ]
+          },
+          "info": {
+            "description": "Show task details",
+            "params": [
+              {
+                "name": "taskId",
+                "type": "string",
+                "description": "Task ID to show"
+              }
+            ]
+          },
+          "complete": {
+            "description": "Complete a task",
+            "params": [
+              {
+                "name": "taskId",
+                "type": "string",
+                "description": "Task ID to complete"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
 }
