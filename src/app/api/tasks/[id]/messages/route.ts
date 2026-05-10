@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { all, run } from '@/lib/db';
 import { logger } from '@/lib/logger';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import type { TaskMessage } from '@/types';
 
 const apiLogger = logger.child({ module: 'api/tasks/[id]/messages' });
@@ -59,7 +59,7 @@ export async function POST(
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
-    const id = uuidv4();
+    const id = randomUUID();
     const now = new Date().toISOString();
 
     await run(`
@@ -67,7 +67,7 @@ export async function POST(
       VALUES (?, ?, ?, ?, ?)
     `, [id, taskId, type, content.trim(), now]);
 
-    const systemMessageId = uuidv4();
+    const systemMessageId = randomUUID();
     await run(`
       INSERT INTO task_messages (id, task_id, type, content, created_at)
       VALUES (?, ?, ?, ?, ?)

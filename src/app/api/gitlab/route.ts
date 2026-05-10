@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import axios from 'axios';
 import { logger } from '@/lib/logger';
 
 const apiLogger = logger.child({ module: 'api/gitlab' });
@@ -29,15 +28,20 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'GitLab token not configured' }, { status: 400 });
     }
 
-    const response = await axios.get(
+    const response = await fetch(
       `${config.url}/api/v4/projects/${encodeURIComponent(projectId)}`,
       {
         headers: { 'PRIVATE-TOKEN': config.token },
       }
     );
+    if (!response.ok) {
+      const errText = await response.text();
+      throw { response: { status: response.status, data: errText } };
+    }
+    const data = await response.json();
 
     apiLogger.info('GitLab project fetched', { projectId });
-    return NextResponse.json(response.data);
+    return NextResponse.json(data);
   } catch (error: any) {
     apiLogger.error('GitLab API error', error, { 
       operation: 'GET',
@@ -119,19 +123,25 @@ async function createMergeRequest(
     description?: string;
   }
 ) {
-  const response = await axios.post(
+  const response = await fetch(
     `${config.url}/api/v4/projects/${encodeURIComponent(projectId)}/merge_requests`,
     {
-      source_branch: params.source_branch || `shadow-${Date.now()}`,
-      target_branch: params.target_branch || 'main',
-      title: params.title || 'ShadowMe Auto MR',
-      description: params.description || 'Created by ShadowMe',
-    },
-    {
-      headers: { 'PRIVATE-TOKEN': config.token },
+      method: 'POST',
+      headers: { 'PRIVATE-TOKEN': config.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source_branch: params.source_branch || `shadow-${Date.now()}`,
+        target_branch: params.target_branch || 'main',
+        title: params.title || 'ShadowMe Auto MR',
+        description: params.description || 'Created by ShadowMe',
+      }),
     }
   );
-  return response.data;
+  if (!response.ok) {
+    const errText = await response.text();
+    throw { response: { status: response.status, data: errText } };
+  }
+  const data = await response.json();
+  return data;
 }
 
 async function createBranch(
@@ -139,17 +149,23 @@ async function createBranch(
   projectId: string,
   params: { branch?: string; ref?: string }
 ) {
-  const response = await axios.post(
+  const response = await fetch(
     `${config.url}/api/v4/projects/${encodeURIComponent(projectId)}/repository/branches`,
     {
-      branch: params.branch || `shadow-${Date.now()}`,
-      ref: params.ref || 'main',
-    },
-    {
-      headers: { 'PRIVATE-TOKEN': config.token },
+      method: 'POST',
+      headers: { 'PRIVATE-TOKEN': config.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        branch: params.branch || `shadow-${Date.now()}`,
+        ref: params.ref || 'main',
+      }),
     }
   );
-  return response.data;
+  if (!response.ok) {
+    const errText = await response.text();
+    throw { response: { status: response.status, data: errText } };
+  }
+  const data = await response.json();
+  return data;
 }
 
 async function commitFile(
@@ -162,18 +178,24 @@ async function commitFile(
     commit_message?: string;
   }
 ) {
-  const response = await axios.post(
+  const response = await fetch(
     `${config.url}/api/v4/projects/${encodeURIComponent(projectId)}/repository/files/${encodeURIComponent(params.file_path || 'shadow.txt')}`,
     {
-      branch: params.branch || 'main',
-      content: params.content || 'Created by ShadowMe',
-      commit_message: params.commit_message || 'ShadowMe commit',
-    },
-    {
-      headers: { 'PRIVATE-TOKEN': config.token },
+      method: 'POST',
+      headers: { 'PRIVATE-TOKEN': config.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        branch: params.branch || 'main',
+        content: params.content || 'Created by ShadowMe',
+        commit_message: params.commit_message || 'ShadowMe commit',
+      }),
     }
   );
-  return response.data;
+  if (!response.ok) {
+    const errText = await response.text();
+    throw { response: { status: response.status, data: errText } };
+  }
+  const data = await response.json();
+  return data;
 }
 
 async function createFile(
@@ -186,26 +208,37 @@ async function createFile(
   }
 ) {
   const filePath = params.file_path || `shadow-${Date.now()}.txt`;
-  const response = await axios.post(
+  const response = await fetch(
     `${config.url}/api/v4/projects/${encodeURIComponent(projectId)}/repository/files/${encodeURIComponent(filePath)}`,
     {
-      branch: params.branch || 'main',
-      content: params.content || 'Created by ShadowMe',
-      commit_message: 'Add file via ShadowMe',
-    },
-    {
-      headers: { 'PRIVATE-TOKEN': config.token },
+      method: 'POST',
+      headers: { 'PRIVATE-TOKEN': config.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        branch: params.branch || 'main',
+        content: params.content || 'Created by ShadowMe',
+        commit_message: 'Add file via ShadowMe',
+      }),
     }
   );
-  return response.data;
+  if (!response.ok) {
+    const errText = await response.text();
+    throw { response: { status: response.status, data: errText } };
+  }
+  const data = await response.json();
+  return data;
 }
 
 async function getBranches(config: GitLabConfig, projectId: string) {
-  const response = await axios.get(
+  const response = await fetch(
     `${config.url}/api/v4/projects/${encodeURIComponent(projectId)}/repository/branches`,
     {
       headers: { 'PRIVATE-TOKEN': config.token },
     }
   );
-  return response.data;
+  if (!response.ok) {
+    const errText = await response.text();
+    throw { response: { status: response.status, data: errText } };
+  }
+  const data = await response.json();
+  return data;
 }

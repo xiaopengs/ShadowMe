@@ -2,7 +2,7 @@ import { getDatabase, all, get, run } from './db';
 import { broadcastToChannel } from './sse-manager';
 import { createTaskAssignMessage, type CCMessage } from './cc-protocol';
 import { logger } from './logger';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import type { Task, TaskStatus } from '@/types';
 
 const lifecycleLogger = logger.child({ module: 'task-lifecycle' });
@@ -110,7 +110,7 @@ export async function assignToCC(options: AssignToCCOptions): Promise<{
     WHERE id = 'shadow-1'
   `, [taskId, now]);
 
-  const msgId = uuidv4();
+  const msgId = randomUUID();
   let systemMsg = `Task assigned to Claude Code at ${new Date().toLocaleString()}`;
   if (notes) {
     systemMsg += `\n\nNotes: ${notes}`;
@@ -175,7 +175,7 @@ export async function updateProgress(taskId: string, progress: number, message?:
   }
 
   if (message) {
-    const msgId = uuidv4();
+    const msgId = randomUUID();
     await run(`
       INSERT INTO task_messages (id, task_id, type, content, created_at)
       VALUES (?, ?, 'claude', ?, ?)
@@ -245,7 +245,7 @@ export async function completeTask(
     WHERE id = 'shadow-1'
   `, [now]);
 
-  const msgId = uuidv4();
+  const msgId = randomUUID();
   let completionText = `✅ Task completed at ${new Date().toLocaleString()}`;
   if (result) {
     completionText += `\n\nResult Type: ${result.type}`;
@@ -304,7 +304,7 @@ export async function errorTask(taskId: string, error: string, recoverable: bool
     WHERE id = ?
   `, [newStatus, now, taskId]);
 
-  const msgId = uuidv4();
+  const msgId = randomUUID();
   const errorText = recoverable
     ? `⚠️ Error occurred: ${error}\n\nThe task will continue processing...`
     : `❌ Critical error: ${error}\n\nThis error requires attention.`;
@@ -366,7 +366,7 @@ export async function closeTask(taskId: string, reason?: string): Promise<{
     `, [now]);
   }
 
-  const msgId = uuidv4();
+  const msgId = randomUUID();
   let closureText = `📁 Task closed at ${new Date().toLocaleString()}`;
   if (reason) {
     closureText += `\nReason: ${reason}`;
@@ -408,7 +408,7 @@ export async function addTaskMessage(
     return { success: false, error: 'Task not found' };
   }
 
-  const messageId = uuidv4();
+  const messageId = randomUUID();
 
   await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { all, get, run } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import type { Task, TaskStatus } from '@/types';
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
-    const id = uuidv4();
+    const id = randomUUID();
     const now = new Date().toISOString();
 
     await run(`

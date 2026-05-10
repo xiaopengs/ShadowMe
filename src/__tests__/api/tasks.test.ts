@@ -36,9 +36,9 @@ jest.mock('@/lib/logger', () => ({
   }
 }));
 
-// Mock uuid
-jest.mock('uuid', () => ({
-  v4: jest.fn(() => 'test-uuid-' + Math.random().toString(36).substring(7))
+// Mock crypto
+jest.mock('crypto', () => ({
+  randomUUID: jest.fn(() => 'test-uuid-' + Math.random().toString(36).substring(7))
 }));
 
 describe('Tasks API', () => {

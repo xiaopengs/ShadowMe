@@ -1,6 +1,4 @@
-import axios from 'axios';
 import { EventEmitter } from 'events';
-import { v4 as uuidv4 } from 'uuid';
 import WebSocket from 'ws';
 import type { Task, ShadowConfig, TaskResult, GitLabMR } from './types';
 
@@ -126,10 +124,18 @@ class ShadowClonePlugin extends EventEmitter {
 
   private async sendHeartbeat(): Promise<void> {
     try {
-      await axios.post(`${this.config.boardUrl}/api/shadow/status`, {
-        status: this.pendingTasks.size > 0 ? 'busy' : 'online',
-        lastHeartbeat: new Date().toISOString(),
+      const response = await fetch(`${this.config.boardUrl}/api/shadow/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: this.pendingTasks.size > 0 ? 'busy' : 'online',
+          lastHeartbeat: new Date().toISOString(),
+        }),
       });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw { response: { status: response.status, data: errText } };
+      }
     } catch (err) {
       console.error('Failed to send heartbeat:', err);
     }
@@ -140,8 +146,13 @@ class ShadowClonePlugin extends EventEmitter {
       const url = status
         ? `${this.config.boardUrl}/api/tasks?status=${status}`
         : `${this.config.boardUrl}/api/tasks`;
-      const response = await axios.get(url);
-      return response.data.tasks;
+      const response = await fetch(url);
+      if (!response.ok) {
+        const errText = await response.text();
+        throw { response: { status: response.status, data: errText } };
+      }
+      const data = await response.json();
+      return data.tasks;
     } catch (err) {
       console.error('Failed to fetch tasks:', err);
       return [];
@@ -154,8 +165,13 @@ class ShadowClonePlugin extends EventEmitter {
 
   async getTask(taskId: string): Promise<Task | null> {
     try {
-      const response = await axios.get(`${this.config.boardUrl}/api/tasks/${taskId}`);
-      return response.data;
+      const response = await fetch(`${this.config.boardUrl}/api/tasks/${taskId}`);
+      if (!response.ok) {
+        const errText = await response.text();
+        throw { response: { status: response.status, data: errText } };
+      }
+      const data = await response.json();
+      return data;
     } catch (err) {
       console.error('Failed to fetch task:', err);
       return null;
@@ -164,10 +180,18 @@ class ShadowClonePlugin extends EventEmitter {
 
   async takeTask(taskId: string): Promise<Task | null> {
     try {
-      const response = await axios.post(`${this.config.boardUrl}/api/tasks/${taskId}/take`);
+      const response = await fetch(`${this.config.boardUrl}/api/tasks/${taskId}/take`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw { response: { status: response.status, data: errText } };
+      }
+      const data = await response.json();
       console.log(`🎯 Task taken: ${taskId}`);
-      this.emit('task:taken', response.data);
-      return response.data;
+      this.emit('task:taken', data);
+      return data;
     } catch (err) {
       console.error('Failed to take task:', err);
       return null;
@@ -176,13 +200,20 @@ class ShadowClonePlugin extends EventEmitter {
 
   async completeTask(taskId: string, result: TaskResult): Promise<Task | null> {
     try {
-      const response = await axios.post(`${this.config.boardUrl}/api/tasks/${taskId}/complete`, {
-        result,
+      const response = await fetch(`${this.config.boardUrl}/api/tasks/${taskId}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ result }),
       });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw { response: { status: response.status, data: errText } };
+      }
+      const data = await response.json();
       console.log(`✅ Task completed: ${taskId}`);
-      this.emit('task:completed', response.data);
+      this.emit('task:completed', data);
       this.pendingTasks.delete(taskId);
-      return response.data;
+      return data;
     } catch (err) {
       console.error('Failed to complete task:', err);
       return null;
@@ -191,8 +222,17 @@ class ShadowClonePlugin extends EventEmitter {
 
   async updateTask(taskId: string, updates: Partial<Task>): Promise<Task | null> {
     try {
-      const response = await axios.patch(`${this.config.boardUrl}/api/tasks/${taskId}`, updates);
-      return response.data;
+      const response = await fetch(`${this.config.boardUrl}/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw { response: { status: response.status, data: errText } };
+      }
+      const data = await response.json();
+      return data;
     } catch (err) {
       console.error('Failed to update task:', err);
       return null;
@@ -212,21 +252,28 @@ class ShadowClonePlugin extends EventEmitter {
     }
 
     try {
-      const response = await axios.post(
+      const response = await fetch(
         `${this.config.gitlabUrl}/api/v4/projects/${projectId}/merge_requests`,
         {
-          source_branch: sourceBranch,
-          target_branch: targetBranch,
-          title,
-          description,
-        },
-        {
+          method: 'POST',
           headers: {
             'PRIVATE-TOKEN': this.config.gitlabToken,
+            'Content-Type': 'application/json',
           },
+          body: JSON.stringify({
+            source_branch: sourceBranch,
+            target_branch: targetBranch,
+            title,
+            description,
+          }),
         }
       );
-      return response.data;
+      if (!response.ok) {
+        const errText = await response.text();
+        throw { response: { status: response.status, data: errText } };
+      }
+      const data = await response.json();
+      return data;
     } catch (err) {
       console.error('Failed to create GitLab MR:', err);
       return null;
@@ -247,19 +294,25 @@ class ShadowClonePlugin extends EventEmitter {
 
     try {
       const encodedPath = encodeURIComponent(filePath);
-      await axios.put(
+      const response = await fetch(
         `${this.config.gitlabUrl}/api/v4/projects/${projectId}/repository/files/${encodedPath}`,
         {
-          branch,
-          content,
-          commit_message: commitMessage,
-        },
-        {
+          method: 'PUT',
           headers: {
             'PRIVATE-TOKEN': this.config.gitlabToken,
+            'Content-Type': 'application/json',
           },
+          body: JSON.stringify({
+            branch,
+            content,
+            commit_message: commitMessage,
+          }),
         }
       );
+      if (!response.ok) {
+        const errText = await response.text();
+        throw { response: { status: response.status, data: errText } };
+      }
       console.log(`📤 Committed to GitLab: ${filePath}`);
       return true;
     } catch (err) {

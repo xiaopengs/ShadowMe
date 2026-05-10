@@ -1,7 +1,7 @@
 import { getDatabase, get, run } from './db';
 import { broadcastToChannel, type SSEChannel } from './sse-manager';
 import { logger } from './logger';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 const ccLogger = logger.child({ module: 'cc-protocol' });
 
@@ -174,7 +174,7 @@ async function handleTaskAssign(message: CCTaskAssignMessage): Promise<{ success
     WHERE id = 'shadow-1'
   `, [message.taskId, now]);
 
-  const msgId = uuidv4();
+  const msgId = randomUUID();
   await run(`
     INSERT INTO task_messages (id, task_id, type, content, created_at)
     VALUES (?, ?, 'system', ?, ?)
@@ -201,7 +201,7 @@ async function handleTaskProgress(message: CCTaskProgressMessage): Promise<{ suc
 
   if (message.logs && message.logs.length > 0) {
     for (const log of message.logs) {
-      const msgId = uuidv4();
+      const msgId = randomUUID();
       await run(`
         INSERT INTO task_messages (id, task_id, type, content, created_at)
         VALUES (?, ?, 'claude', ?, ?)
@@ -210,7 +210,7 @@ async function handleTaskProgress(message: CCTaskProgressMessage): Promise<{ suc
   }
 
   if (message.message) {
-    const msgId = uuidv4();
+    const msgId = randomUUID();
     await run(`
       INSERT INTO task_messages (id, task_id, type, content, created_at)
       VALUES (?, ?, 'claude', ?, ?)
@@ -259,7 +259,7 @@ async function handleTaskComplete(message: CCTaskCompleteMessage): Promise<{ suc
     WHERE id = 'shadow-1'
   `, [now]);
 
-  const msgId = uuidv4();
+  const msgId = randomUUID();
   let completionText = `Task completed successfully at ${new Date(message.timestamp).toLocaleString()}\n\n`;
   completionText += `Result Type: ${message.result.type}\n`;
   if (message.result.url) {
@@ -308,7 +308,7 @@ async function handleTaskError(message: CCTaskErrorMessage): Promise<{ success: 
     `, [now, message.taskId]);
   }
 
-  const msgId = uuidv4();
+  const msgId = randomUUID();
   let errorText = `⚠️ Error: ${message.error}\n\n`;
   if (message.stack) {
     errorText += `Stack trace:\n${message.stack}\n\n`;
@@ -336,7 +336,7 @@ async function handleTaskError(message: CCTaskErrorMessage): Promise<{ success: 
 async function handleTaskLog(message: CCTaskLogMessage): Promise<{ success: boolean; error?: string }> {
   const now = new Date().toISOString();
 
-  const msgId = uuidv4();
+  const msgId = randomUUID();
   const prefix = message.level === 'error' ? '❌' :
                   message.level === 'warn' ? '⚠️' :
                   message.level === 'debug' ? '🔍' : '📝';
@@ -359,7 +359,7 @@ async function handleTaskLog(message: CCTaskLogMessage): Promise<{ success: bool
 async function handleGitCommit(message: CCGitCommitMessage): Promise<{ success: boolean; error?: string }> {
   const now = new Date().toISOString();
 
-  const msgId = uuidv4();
+  const msgId = randomUUID();
   let commitText = `📦 Commit: ${message.commitSha.slice(0, 8)}\n`;
   commitText += `Branch: ${message.branch}\n`;
   commitText += `Files: ${message.files.length}\n`;
@@ -384,7 +384,7 @@ async function handleGitCommit(message: CCGitCommitMessage): Promise<{ success: 
 async function handleGitMRCreated(message: CCGitMRCreatedMessage): Promise<{ success: boolean; error?: string }> {
   const now = new Date().toISOString();
 
-  const msgId = uuidv4();
+  const msgId = randomUUID();
   let mrText = `🔀 Merge Request Created\n`;
   mrText += `MR ID: ${message.mrId}\n`;
   mrText += `URL: ${message.mrUrl}\n`;
@@ -472,7 +472,7 @@ async function handleStatusChange(message: CCSyncStatusMessage): Promise<{ succe
     ) as { id: string } | undefined;
 
     if (currentTask) {
-      const msgId = uuidv4();
+      const msgId = randomUUID();
       await run(`
         INSERT INTO task_messages (id, task_id, type, content, created_at)
         VALUES (?, ?, 'system', ?, ?)
@@ -502,7 +502,7 @@ export function createTaskAssignMessage(
   return {
     type: 'task.assign',
     timestamp: new Date().toISOString(),
-    messageId: uuidv4(),
+    messageId: randomUUID(),
     senderId,
     taskId,
     title,

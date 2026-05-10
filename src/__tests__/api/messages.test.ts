@@ -33,10 +33,10 @@ jest.mock('@/lib/logger', () => ({
   }
 }));
 
-// Mock uuid
+// Mock crypto
 let uuidCounter = 0;
-jest.mock('uuid', () => ({
-  v4: jest.fn(() => `test-uuid-${++uuidCounter}`)
+jest.mock('crypto', () => ({
+  randomUUID: jest.fn(() => `test-uuid-${++uuidCounter}`)
 }));
 
 describe('Messages API', () => {
