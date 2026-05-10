@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500" font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="500" rx="16" fill="url(#bgGrad)"/>
+
+  <!-- Title -->
+  <text x="450" y="35" text-anchor="middle" fill="#e0e0e0" font-size="18" font-weight="700">ShadowMe API 接口总览</text>
+
+  <!-- Tasks Section -->
+  <rect x="20" y="55" width="280" height="210" rx="10" fill="#e9456020" stroke="#e94560" stroke-width="1"/>
+  <text x="160" y="78" text-anchor="middle" fill="#e94560" font-size="13" font-weight="700">📋 任务管理</text>
+  <text x="35" y="102" fill="#ffffffcc" font-size="11">GET    /api/tasks</text>
+  <text x="35" y="120" fill="#ffffffcc" font-size="11">POST   /api/tasks</text>
+  <text x="35" y="138" fill="#ffffffcc" font-size="11">GET    /api/tasks/:id</text>
+  <text x="35" y="156" fill="#ffffffcc" font-size="11">PATCH  /api/tasks/:id</text>
+  <text x="35" y="174" fill="#ffffffcc" font-size="11">DELETE /api/tasks/:id</text>
+  <text x="35" y="192" fill="#ffffffcc" font-size="11">POST   /api/tasks/:id/take</text>
+  <text x="35" y="210" fill="#ffffffcc" font-size="11">POST   /api/tasks/:id/complete</text>
+  <text x="35" y="228" fill="#ffffffcc" font-size="11">GET    /api/tasks/:id/messages</text>
+  <text x="35" y="246" fill="#ffffffcc" font-size="11">POST   /api/tasks/:id/messages</text>
+
+  <!-- Shadow Section -->
+  <rect x="310" y="55" width="280" height="105" rx="10" fill="#53348320" stroke="#533483" stroke-width="1"/>
+  <text x="450" y="78" text-anchor="middle" fill="#9966cc" font-size="13" font-weight="700">🤖 影子分身</text>
+  <text x="325" y="102" fill="#ffffffcc" font-size="11">GET  /api/shadow/status</text>
+  <text x="325" y="120" fill="#ffffffcc" font-size="11">POST /api/shadow/status</text>
+  <text x="325" y="138" fill="#ffffffcc" font-size="11">GET  /api/status</text>
+
+  <!-- Board Section -->
+  <rect x="310" y="170" width="280" height="65" rx="10" fill="#0f346020" stroke="#0f3460" stroke-width="1"/>
+  <text x="450" y="193" text-anchor="middle" fill="#5588bb" font-size="13" font-weight="700">📊 看板统计</text>
+  <text x="325" y="217" fill="#ffffffcc" font-size="11">GET  /api/board/stats</text>
+
+  <!-- SSE Section -->
+  <rect x="600" y="55" width="280" height="105" rx="10" fill="#e9456020" stroke="#e94560" stroke-width="1"/>
+  <text x="740" y="78" text-anchor="middle" fill="#e94560" font-size="13" font-weight="700">📡 实时推送</text>
+  <text x="615" y="102" fill="#ffffffcc" font-size="11">GET  /api/sse?channels=task,shadow</text>
+  <text x="615" y="120" fill="#ffffffcc" font-size="11">POST /api/sse</text>
+  <text x="615" y="138" fill="#ffffffcc" font-size="11">HEAD /api/sse</text>
+
+  <!-- Webhook Section -->
+  <rect x="600" y="170" width="280" height="105" rx="10" fill="#53348320" stroke="#533483" stroke-width="1"/>
+  <text x="740" y="193" text-anchor="middle" fill="#9966cc" font-size="13" font-weight="700">🔗 Webhook</text>
+  <text x="615" y="217" fill="#ffffffcc" font-size="11">POST /api/webhook/cc</text>
+  <text x="615" y="235" fill="#ffffffcc" font-size="11">GET  /api/webhook/cc</text>
+  <text x="615" y="253" fill="#ffffffcc" font-size="11">PUT  /api/webhook/cc (batch)</text>
+
+  <!-- GitLab Section -->
+  <rect x="20" y="275" width="280" height="105" rx="10" fill="#0f346020" stroke="#0f3460" stroke-width="1"/>
+  <text x="160" y="298" text-anchor="middle" fill="#5588bb" font-size="13" font-weight="700">🦊 GitLab 集成</text>
+  <text x="35" y="322" fill="#ffffffcc" font-size="11">GET  /api/gitlab</text>
+  <text x="35" y="340" fill="#ffffffcc" font-size="11">POST /api/gitlab {action: create_mr}</text>
+  <text x="35" y="358" fill="#ffffffcc" font-size="11">POST /api/gitlab {action: create_branch}</text>
+  <text x="35" y="376" fill="#ffffffcc" font-size="11">POST /api/gitlab {action: commit_file}</text>
+
+  <!-- API Keys Section -->
+  <rect x="310" y="245" width="280" height="105" rx="10" fill="#e9456020" stroke="#e94560" stroke-width="1"/>
+  <text x="450" y="268" text-anchor="middle" fill="#e94560" font-size="13" font-weight="700">🔑 API Key 管理</text>
+  <text x="325" y="292" fill="#ffffffcc" font-size="11">GET  /api/api-keys</text>
+  <text x="325" y="310" fill="#ffffffcc" font-size="11">POST /api/api-keys</text>
+  <text x="325" y="328" fill="#ffffffcc" font-size="11">GET  /api/api-keys/:id</text>
+  <text x="325" y="346" fill="#ffffffcc" font-size="11">DELETE /api/api-keys/:id</text>
+
+  <!-- Data Flow -->
+  <rect x="20" y="400" width="860" height="85" rx="10" fill="#ffffff08"/>
+  <text x="450" y="425" text-anchor="middle" fill="#8899aa" font-size="13" font-weight="700">数据流向</text>
+
+  <!-- Flow diagram -->
+  <rect x="50" y="440" width="100" height="30" rx="6" fill="#e94560" opacity="0.8"/>
+  <text x="100" y="460" text-anchor="middle" fill="#fff" font-size="10" font-weight="600">浏览器</text>
+
+  <text x="165" y="460" fill="#8899aa" font-size="14">→</text>
+
+  <rect x="185" y="440" width="100" height="30" rx="6" fill="#0f3460" opacity="0.8"/>
+  <text x="235" y="460" text-anchor="middle" fill="#fff" font-size="10" font-weight="600">API Routes</text>
+
+  <text x="300" y="460" fill="#8899aa" font-size="14">→</text>
+
+  <rect x="320" y="440" width="100" height="30" rx="6" fill="#1a1a2e" stroke="#0f3460" stroke-width="1"/>
+  <text x="370" y="460" text-anchor="middle" fill="#8899aa" font-size="10" font-weight="600">sql.js</text>
+
+  <text x="435" y="460" fill="#8899aa" font-size="14">→</text>
+
+  <rect x="455" y="440" width="100" height="30" rx="6" fill="#533483" opacity="0.8"/>
+  <text x="505" y="460" text-anchor="middle" fill="#fff" font-size="10" font-weight="600">SSE Push</text>
+
+  <text x="570" y="460" fill="#8899aa" font-size="14">→</text>
+
+  <rect x="590" y="440" width="120" height="30" rx="6" fill="#533483" opacity="0.8"/>
+  <text x="650" y="460" text-anchor="middle" fill="#fff" font-size="10" font-weight="600">CC Plugin</text>
+
+  <text x="725" y="460" fill="#8899aa" font-size="14">→</text>
+
+  <rect x="745" y="440" width="100" height="30" rx="6" fill="#e94560" opacity="0.8"/>
+  <text x="795" y="460" text-anchor="middle" fill="#fff" font-size="10" font-weight="600">Claude AI</text>
+</svg>
