@@ -1,12 +1,15 @@
+/**
+ * Dashboard Page - Enhanced with Accessibility
+ * Features: Semantic HTML, ARIA labels, keyboard navigation
+ */
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
   Plus,
-  MoreHorizontal,
   CheckCircle,
   RefreshCw,
   Loader2,
@@ -15,7 +18,7 @@ import {
   FileText,
   Archive,
   Inbox,
-  Clock
+  Clock,
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useApp } from '@/context/AppContext';
@@ -26,7 +29,7 @@ interface TaskCardProps {
   variant?: 'default' | 'active' | 'completed';
 }
 
-// Animated counter hook for smooth number transitions
+// Animated counter hook
 function useAnimatedNumber(targetValue: number, duration: number = 500) {
   const [displayValue, setDisplayValue] = useState(targetValue);
   const previousValue = useRef(targetValue);
@@ -43,11 +46,8 @@ function useAnimatedNumber(targetValue: number, duration: number = 500) {
     const animate = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      
-      // Ease out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
       const currentValue = Math.round(startValue + (endValue - startValue) * eased);
-      
       setDisplayValue(currentValue);
       
       if (progress < 1) {
@@ -70,7 +70,7 @@ function useAnimatedNumber(targetValue: number, duration: number = 500) {
 }
 
 // Animated stat card component
-function AnimatedStatCard({ 
+const AnimatedStatCard = memo(function AnimatedStatCard({ 
   label, 
   value, 
   icon: Icon, 
@@ -85,16 +85,16 @@ function AnimatedStatCard({
   const prefersReducedMotion = useReducedMotion();
 
   return (
-    <motion.div
+    <motion.article
       className="glass-card p-6 relative overflow-hidden"
       whileHover={{ y: -4, boxShadow: 'var(--shadow-glow)' }}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: prefersReducedMotion ? 0.1 : 0.3 }}
     >
-      {/* Background glow effect */}
       <div 
         className={`absolute -top-10 -right-10 w-32 h-32 rounded-full opacity-10 blur-xl ${color}`}
+        aria-hidden="true"
       />
       
       <div className="flex items-start justify-between">
@@ -111,50 +111,54 @@ function AnimatedStatCard({
           </motion.p>
         </div>
         <div className={`p-3 rounded-xl ${color} bg-opacity-10`}>
-          <Icon size={24} className={color.replace('bg-', 'text-')} />
+          <Icon size={24} className={color.replace('bg-', 'text-')} aria-hidden="true" />
         </div>
       </div>
-    </motion.div>
+    </motion.article>
   );
-}
-
-interface TaskCardComponentProps {
-  task: Task;
-  variant?: 'default' | 'active' | 'completed';
-}
+});
 
 const typeConfig: Record<TaskType, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
   technical_issue: { 
     label: '技术问题', 
     icon: Code, 
     color: 'text-[var(--color-error)]',
-    bgColor: 'bg-[var(--color-error)]/10'
+    bgColor: 'bg-[var(--color-error)]/10',
   },
   design_doc: { 
     label: '方案设计', 
     icon: FileText, 
     color: 'text-[var(--color-primary)]',
-    bgColor: 'bg-[var(--color-primary)]/10'
+    bgColor: 'bg-[var(--color-primary)]/10',
   },
   code_review: { 
     label: '代码审查', 
     icon: FolderCode, 
     color: 'text-[var(--color-secondary)]',
-    bgColor: 'bg-[var(--color-secondary)]/10'
+    bgColor: 'bg-[var(--color-secondary)]/10',
   },
   other: { 
     label: '其他', 
     icon: Archive, 
     color: 'text-[var(--color-outline)]',
-    bgColor: 'bg-[var(--color-outline)]/10'
+    bgColor: 'bg-[var(--color-outline)]/10',
   },
 };
 
-function TaskCardComponent({ task, variant = 'default' }: TaskCardComponentProps) {
+interface TaskCardComponentProps {
+  task: Task;
+  variant?: 'default' | 'active' | 'completed';
+}
+
+// Memoized task card
+const TaskCardComponent = memo(function TaskCardComponent({ 
+  task, 
+  variant = 'default' 
+}: TaskCardComponentProps) {
   const router = useRouter();
   const isActive = variant === 'active';
   const isCompleted = variant === 'completed';
-  const typeInfo = typeConfig[task.type] || typeConfig.other;
+  const typeInfo = typeConfig[task.type] ?? typeConfig.other;
   const TypeIcon = typeInfo.icon;
 
   const formatTimeAgo = (dateStr: string) => {
@@ -172,13 +176,21 @@ function TaskCardComponent({ task, variant = 'default' }: TaskCardComponentProps
     router.push(`/tasks/${task.id}`);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleCardClick();
+    }
+  };
+
   return (
-    <motion.div
+    <motion.article
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       whileHover={{ y: -4 }}
       onClick={handleCardClick}
+      onKeyDown={handleKeyDown}
       className={`
         bg-[var(--color-surface-container-high)] rounded-lg p-4 border transition-all cursor-pointer
         ${isActive 
@@ -188,47 +200,30 @@ function TaskCardComponent({ task, variant = 'default' }: TaskCardComponentProps
             : 'border-[var(--color-outline-variant)]/10 hover:border-[var(--color-outline-variant)]/50'
         }
       `}
+      role="button"
+      tabIndex={0}
+      aria-label={`Task: ${task.title}, Status: ${isActive ? 'Active' : isCompleted ? 'Completed' : 'Pending'}`}
     >
-      {/* Energy Line for Active Tasks */}
       {isActive && (
-        <div className="absolute left-0 top-4 bottom-4 w-0.5 bg-[var(--color-primary)] rounded-r-full shadow-energy-glow" />
+        <div className="absolute left-0 top-4 bottom-4 w-0.5 bg-[var(--color-primary)] rounded-r-full shadow-energy-glow" aria-hidden="true" />
       )}
 
       <div className={`${isActive ? 'pl-3' : ''}`}>
-        {/* Header */}
         <div className="flex items-start justify-between mb-3">
-          <span className={`
-            code-label px-2 py-0.5 rounded
-            ${isCompleted 
-              ? 'bg-[var(--color-surface-variant)] text-[var(--color-outline)] line-through' 
-              : isActive
-                ? 'bg-[var(--color-secondary)]/10 text-[var(--color-secondary)] flex items-center gap-1'
-                : 'bg-[var(--color-primary-container)]/10 text-[var(--color-primary-container)]'
-            }
-          `}>
-            {isActive && <RefreshCw size={12} className="animate-spin" />}
+          <span className="code-label text-[10px] text-[var(--color-outline)]">
             {task.id.slice(0, 10).toUpperCase()}
           </span>
-          <button 
-            onClick={(e) => e.stopPropagation()}
-            className="text-[var(--color-outline)] hover:text-[var(--color-on-surface)] transition-colors"
-          >
-            <MoreHorizontal size={18} />
-          </button>
         </div>
 
-        {/* Type Badge */}
-        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] ${typeInfo.bgColor} ${typeInfo.color} mb-2`}>
-          <TypeIcon size={10} />
+        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] ${typeInfo.bgColor} ${typeInfo.color}`}>
+          <TypeIcon size={10} aria-hidden="true" />
           {typeInfo.label}
         </div>
 
-        {/* Description */}
         <p className={`font-body text-sm text-[var(--color-on-surface)] mb-4 ${isCompleted ? 'line-through decoration-[var(--color-outline-variant)]' : ''}`}>
           {task.title}
         </p>
 
-        {/* Mini Terminal for Active Tasks */}
         {isActive && (
           <div className="bg-[var(--color-surface-container-lowest)] rounded p-2 font-mono text-[10px] text-[var(--color-on-surface-variant)] mb-4 border border-[var(--color-outline-variant)]/20">
             <span className="text-[var(--color-secondary)]">&gt;</span> Analyzing task context<br />
@@ -237,7 +232,6 @@ function TaskCardComponent({ task, variant = 'default' }: TaskCardComponentProps
           </div>
         )}
 
-        {/* Footer */}
         <div className="flex items-center justify-between mt-auto">
           <div className="flex items-center gap-2 text-[var(--color-on-surface-variant)]">
             <img
@@ -245,8 +239,9 @@ function TaskCardComponent({ task, variant = 'default' }: TaskCardComponentProps
                 ? "https://images.unsplash.com/photo-1531297461136-82af7ce98621?w=40&h=40&fit=crop"
                 : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
               }
-              alt={isActive ? "Shadow Clone" : "Requester"}
+              alt=""
               className={`w-5 h-5 rounded-full object-cover ${isActive ? 'shadow-energy-glow' : ''}`}
+              aria-hidden="true"
             />
             <span className="text-[11px] font-mono">
               {isActive ? 'Shadow.OS' : task.createdBy.split(' ')[0]}
@@ -254,13 +249,13 @@ function TaskCardComponent({ task, variant = 'default' }: TaskCardComponentProps
           </div>
           
           {isCompleted ? (
-            <div className="flex items-center gap-1 text-[var(--color-secondary)] text-[11px] font-mono">
-              <CheckCircle size={14} />
+            <div className="flex items-center gap-1 text-[var(--color-secondary)] text-[11px] font-mono" role="status">
+              <CheckCircle size={14} aria-hidden="true" />
               Done
             </div>
           ) : isActive ? (
-            <span className="text-[var(--color-secondary)] text-[11px] font-mono animate-pulse flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-secondary)] animate-pulse" />
+            <span className="text-[var(--color-secondary)] text-[11px] font-mono animate-pulse flex items-center gap-1" role="status">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-secondary)] animate-pulse" aria-hidden="true" />
               ACTIVE
             </span>
           ) : (
@@ -270,16 +265,17 @@ function TaskCardComponent({ task, variant = 'default' }: TaskCardComponentProps
           )}
         </div>
       </div>
-    </motion.div>
+    </motion.article>
   );
-}
+});
 
-function KanbanColumn({ 
+// Memoized kanban column
+const KanbanColumn = memo(function KanbanColumn({ 
   title, 
   status, 
   tasks, 
   variant = 'default',
-  count 
+  count,
 }: { 
   title: string; 
   status: TaskStatus; 
@@ -291,7 +287,7 @@ function KanbanColumn({
   const prefersReducedMotion = useReducedMotion();
 
   return (
-    <motion.div
+    <motion.section
       className={`
         flex flex-col glass-panel rounded-xl p-4
         ${variant === 'active' ? 'border-[var(--color-primary)]/20 relative overflow-hidden' : ''}
@@ -300,19 +296,17 @@ function KanbanColumn({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: prefersReducedMotion ? 0 : 0.1 }}
+      aria-label={`${title} column with ${count} tasks`}
     >
-      {/* Gradient bar for active column */}
       {variant === 'active' && (
-        <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-[var(--color-primary)] to-transparent opacity-50" />
+        <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-[var(--color-primary)] to-transparent opacity-50" aria-hidden="true" />
       )}
 
-      {/* Column Header */}
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-[var(--color-outline-variant)]/30">
+      <header className="flex items-center justify-between mb-4 pb-3 border-b border-[var(--color-outline-variant)]/30">
         <h3 className={`
           font-headline text-lg flex items-center gap-2
           ${variant === 'active' ? 'text-[var(--color-primary)]' : variant === 'completed' ? 'text-[var(--color-on-surface-variant)]' : 'text-[var(--color-on-surface)]'}
         `}>
-          {/* Status indicator */}
           <motion.span 
             className={`
               w-2.5 h-2.5 rounded-full
@@ -326,6 +320,7 @@ function KanbanColumn({
               ]
             } : {}}
             transition={{ duration: 2, repeat: Infinity }}
+            aria-hidden="true"
           />
           {title}
         </h3>
@@ -341,32 +336,33 @@ function KanbanColumn({
               : 'bg-[var(--color-surface-container)] text-[var(--color-on-surface-variant)]'
             }
           `}
+          aria-label={`${count} tasks`}
         >
           {animatedCount}
         </motion.span>
-      </div>
+      </header>
 
-      {/* Tasks List */}
-      <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1" role="list" aria-label={`${title} tasks`}>
         <AnimatePresence mode="popLayout">
           {tasks.map((task) => (
-            <TaskCardComponent 
-              key={task.id} 
-              task={task} 
-              variant={variant}
-            />
+            <div key={task.id} role="listitem">
+              <TaskCardComponent 
+                task={task} 
+                variant={variant}
+              />
+            </div>
           ))}
         </AnimatePresence>
         
         {tasks.length === 0 && (
-          <div className="text-center py-8 text-[var(--color-outline)] text-sm">
+          <p className="text-center py-8 text-[var(--color-outline)] text-sm">
             No tasks
-          </div>
+          </p>
         )}
       </div>
-    </motion.div>
+    </motion.section>
   );
-}
+});
 
 export default function DashboardPage() {
   const { state, fetchTasks } = useApp();
@@ -382,18 +378,15 @@ export default function DashboardPage() {
     loadData();
   }, [fetchTasks]);
 
-  // Filter tasks by status from real data
   const pendingTasks = state.tasks.filter(t => t.status === 'pending');
   const inProgressTasks = state.tasks.filter(t => t.status === 'in_progress');
   const completedTasks = state.tasks.filter(t => t.status === 'completed' || t.status === 'closed');
 
-  // Use real tasks if available, otherwise empty (don't show demo data)
   const hasRealTasks = state.tasks.length > 0;
   const displayPending = pendingTasks;
   const displayInProgress = inProgressTasks;
   const displayCompleted = completedTasks;
 
-  // Calculate stats
   const totalTasks = state.tasks.length;
   const completedCount = completedTasks.length;
   const activeCount = inProgressTasks.length;
@@ -402,26 +395,27 @@ export default function DashboardPage() {
     <AppLayout>
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
-        <motion.div 
+        <motion.header 
           className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: prefersReducedMotion ? 0.1 : 0.3 }}
         >
           <div>
-            <h2 className="font-headline text-2xl md:text-3xl text-[var(--color-on-surface)] mb-1">
+            <h1 className="font-headline text-2xl md:text-3xl text-[var(--color-on-surface)] mb-1">
               协作看板
-            </h2>
+            </h1>
             <p className="font-body text-sm text-[var(--color-on-surface-variant)]">
               Real-time task synchronization with Local Claude Code
             </p>
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Shadow Status Widget */}
-            <motion.div 
+            <motion.article 
               className="glass-panel rounded-full px-4 py-2 flex items-center gap-3 border border-[var(--color-primary)]/20 bg-[var(--color-surface-container)]/50"
               whileHover={{ scale: 1.02 }}
+              role="status"
+              aria-label={`Shadow Status: ${state.shadow.status === 'online' ? 'Ready & Waiting' : 'Offline'}`}
             >
               <div className="relative">
                 <img
@@ -437,15 +431,15 @@ export default function DashboardPage() {
                       : '0 0 5px var(--color-secondary)'
                   }}
                   transition={{ duration: 1.5, repeat: Infinity }}
+                  aria-hidden="true"
                 />
               </div>
               <div className="flex flex-col">
                 <span className="code-label text-[var(--color-on-surface)]">Shadow.OS</span>
                 <span className="status-mono text-[var(--color-secondary)] uppercase">{state.shadow.status === 'online' ? 'Ready & Waiting' : 'Offline'}</span>
               </div>
-            </motion.div>
+            </motion.article>
 
-            {/* Quick Create Button */}
             <motion.div
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
@@ -453,20 +447,23 @@ export default function DashboardPage() {
               <Link
                 href="/tasks/new"
                 className="btn-primary"
+                aria-label="Create a new task"
               >
-                <Plus size={18} />
+                <Plus size={18} aria-hidden="true" />
                 Quick Create
               </Link>
             </motion.div>
           </div>
-        </motion.div>
+        </motion.header>
 
-        {/* Stats Cards with Animated Numbers */}
+        {/* Stats Cards */}
         <motion.div 
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1, duration: prefersReducedMotion ? 0.1 : 0.3 }}
+          role="region"
+          aria-label="Task statistics"
         >
           <AnimatedStatCard
             label="Total Tasks"
@@ -500,12 +497,14 @@ export default function DashboardPage() {
             className="flex items-center justify-center h-64"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
+            role="status"
+            aria-label="Loading tasks"
           >
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
             >
-              <Loader2 size={32} className="text-[var(--color-primary)]" />
+              <Loader2 size={32} className="text-[var(--color-primary)]" aria-hidden="true" />
             </motion.div>
           </motion.div>
         )}
@@ -516,6 +515,8 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center py-20 gap-6"
+            role="status"
+            aria-label="No tasks available"
           >
             <motion.div
               initial={{ scale: 0, rotate: -10 }}
@@ -523,12 +524,12 @@ export default function DashboardPage() {
               transition={{ type: 'spring', stiffness: 200, damping: 15 }}
               className="w-24 h-24 rounded-full bg-[var(--color-surface-container)] flex items-center justify-center shadow-[0_0_40px_rgba(208,188,255,0.1)]"
             >
-              <Inbox size={48} className="text-[var(--color-outline)]" />
+              <Inbox size={48} className="text-[var(--color-outline)]" aria-hidden="true" />
             </motion.div>
             <div className="text-center">
-              <h3 className="font-headline text-2xl text-[var(--color-on-surface)] mb-2">
+              <h2 className="font-headline text-2xl text-[var(--color-on-surface)] mb-2">
                 还没有任务
-              </h3>
+              </h2>
               <p className="font-body text-[var(--color-on-surface-variant)] max-w-md">
                 点击 Quick Create 或前往 New Task Portal 创建第一个协作任务
               </p>
@@ -541,7 +542,7 @@ export default function DashboardPage() {
                 href="/tasks/new"
                 className="btn-primary mt-2"
               >
-                <Plus size={18} />
+                <Plus size={18} aria-hidden="true" />
                 创建第一个任务
               </Link>
             </motion.div>
@@ -555,8 +556,9 @@ export default function DashboardPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
+            role="region"
+            aria-label="Task board"
           >
-            {/* Pending Column */}
             <KanbanColumn
               title="待处理"
               status="pending"
@@ -565,7 +567,6 @@ export default function DashboardPage() {
               count={displayPending.length}
             />
 
-            {/* In Progress Column */}
             <KanbanColumn
               title="分身处理中"
               status="in_progress"
@@ -574,7 +575,6 @@ export default function DashboardPage() {
               count={displayInProgress.length}
             />
 
-            {/* Completed Column */}
             <KanbanColumn
               title="已完成"
               status="completed"

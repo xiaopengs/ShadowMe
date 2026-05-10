@@ -1,3 +1,7 @@
+/**
+ * Toast Component - Enhanced with Accessibility
+ * Features: ARIA attributes, role="alert", aria-live regions
+ */
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
@@ -26,7 +30,7 @@ export function useToast() {
   return context;
 }
 
-// Toast item component with individual animations
+// Toast item component with accessibility
 function ToastItem({ 
   toast, 
   onRemove 
@@ -58,7 +62,19 @@ function ToastItem({
     }
   };
 
-  // Animation variants - fixed type issues
+  // Accessibility label for screen readers
+  const getAriaLabel = (type: ToastType) => {
+    switch (type) {
+      case 'success':
+        return 'Success notification';
+      case 'error':
+        return 'Error notification';
+      default:
+        return 'Information notification';
+    }
+  };
+
+  // Animation variants
   const variants: Variants = prefersReducedMotion
     ? {
         initial: { opacity: 0 },
@@ -69,7 +85,7 @@ function ToastItem({
         initial: { 
           opacity: 0, 
           x: 100,
-          scale: 0.9
+          scale: 0.9,
         },
         animate: { 
           opacity: 1, 
@@ -78,8 +94,8 @@ function ToastItem({
           transition: {
             type: 'spring' as const,
             damping: 25,
-            stiffness: 300
-          }
+            stiffness: 300,
+          },
         },
         exit: { 
           opacity: 0, 
@@ -87,8 +103,8 @@ function ToastItem({
           scale: 0.9,
           transition: {
             duration: 0.2,
-            ease: [0.4, 0, 1, 1] as const
-          }
+            ease: [0.4, 0, 1, 1] as const,
+          },
         },
       };
 
@@ -104,13 +120,17 @@ function ToastItem({
         backdrop-blur-md shadow-lg min-w-[280px] max-w-[400px]
         ${getStyles(toast.type)}
       `}
+      role="alert"
+      aria-live="polite"
+      aria-label={getAriaLabel(toast.type)}
     >
-      {/* Icon with entrance animation */}
+      {/* Icon */}
       <motion.span 
         className="flex-shrink-0"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.1, type: 'spring', stiffness: 500 }}
+        aria-hidden="true"
       >
         {getIcon(toast.type)}
       </motion.span>
@@ -131,6 +151,7 @@ function ToastItem({
         whileTap={{ scale: 0.9 }}
         onClick={() => onRemove(toast.id)}
         className="flex-shrink-0 p-1 rounded transition-colors"
+        aria-label="Dismiss notification"
       >
         <X size={14} />
       </motion.button>
@@ -138,11 +159,33 @@ function ToastItem({
   );
 }
 
+// Live region for assertive announcements (for critical errors)
+function ToastLiveRegion({ message, type }: { message: string; type: ToastType }) {
+  return (
+    <div 
+      role="alert" 
+      aria-live="assertive" 
+      aria-atomic="true"
+      className="sr-only"
+    >
+      {type === 'error' ? `Error: ${message}` : message}
+    </div>
+  );
+}
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [assertiveMessage, setAssertiveMessage] = useState<{ message: string; type: ToastType } | null>(null);
 
   const showToast = useCallback((message: string, type: ToastType = 'info') => {
     const id = Math.random().toString(36).substring(2, 9);
+    
+    // For critical errors, use assertive live region
+    if (type === 'error') {
+      setAssertiveMessage({ message, type });
+      setTimeout(() => setAssertiveMessage(null), 1000);
+    }
+    
     setToasts((prev) => [...prev, { id, message, type }]);
 
     // Auto remove after 3 seconds
@@ -158,14 +201,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
+      
+      {/* Assertive live region for critical announcements */}
+      {assertiveMessage && (
+        <ToastLiveRegion message={assertiveMessage.message} type={assertiveMessage.type} />
+      )}
+      
       {/* Toast Container with staggered animations */}
       <div 
         className="fixed top-4 right-4 z-[100] space-y-2 pointer-events-none"
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: '8px'
+          gap: '8px',
         }}
+        aria-label="Notifications"
+        role="region"
       >
         <AnimatePresence mode="sync" initial={false}>
           {toasts.map((toast) => (

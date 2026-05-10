@@ -1,11 +1,10 @@
 /**
- * Sidebar Component - Enhanced with design system alignment
- * Features: Energy glow avatar, Sync CC button, Support/Documentation links
- * Source: detail_log_1/code.html, create_task/code.html
+ * Sidebar Component - Enhanced with Accessibility & Performance
+ * Features: ARIA attributes, keyboard navigation, React.memo optimization
  */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,12 +16,8 @@ import {
   RefreshCw,
   HelpCircle,
   FileText,
-  Menu,
-  X,
   ChevronDown,
   Palette,
-  Wifi,
-  WifiOff,
 } from 'lucide-react';
 import { useTheme, THEMES, type Theme } from '@/context/ThemeContext';
 import { useApp } from '@/context/AppContext';
@@ -39,24 +34,10 @@ const navItems = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
-export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
-  const pathname = usePathname();
-  const { theme, setTheme, themeInfo } = useTheme();
-  const { state } = useApp();
-  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
-
-  const handleThemeChange = (newTheme: Theme) => {
-    setTheme(newTheme);
-    setThemeDropdownOpen(false);
-  };
-
-  const handleSyncCC = async () => {
-    // TODO: Implement actual sync functionality
-    console.log('Syncing Claude Code...');
-  };
-
+// Memoized status indicator to prevent unnecessary re-renders
+const StatusIndicator = memo(function StatusIndicator({ status }: { status: string }) {
   const getStatusColor = () => {
-    switch (state.shadow.status) {
+    switch (status) {
       case 'online': return 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]';
       case 'busy': return 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]';
       case 'offline': return 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]';
@@ -65,7 +46,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   };
 
   const getStatusLabel = () => {
-    switch (state.shadow.status) {
+    switch (status) {
       case 'online': return 'Active';
       case 'busy': return 'Working';
       case 'offline': return 'Offline';
@@ -73,41 +54,115 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     }
   };
 
+  return (
+    <>
+      <span className={`w-1.5 h-1.5 rounded-full ${getStatusColor()}`} aria-hidden="true" />
+      <span className="text-[10px] text-[var(--color-on-surface-variant)] truncate">
+        Local Claude Code: {getStatusLabel()}
+      </span>
+    </>
+  );
+});
+
+// Memoized theme dropdown item
+const ThemeDropdownItem = memo(function ThemeDropdownItem({
+  theme,
+  isSelected,
+  onSelect,
+  name,
+  description,
+}: {
+  theme: Theme;
+  isSelected: boolean;
+  onSelect: (t: Theme) => void;
+  name: string;
+  description: string;
+}) {
+  return (
+    <button
+      onClick={() => onSelect(theme)}
+      className={`
+        w-full px-3 py-2 text-left text-xs flex items-center justify-between hover:bg-[var(--color-surface-variant)] transition-colors
+        ${isSelected ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-[var(--color-on-surface)]'}
+      `}
+      role="menuitem"
+      aria-checked={isSelected}
+    >
+      <span>{name}</span>
+      <span className="text-[var(--color-on-surface-variant)] text-[10px]">{description}</span>
+    </button>
+  );
+});
+
+function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
+  const pathname = usePathname();
+  const { theme, setTheme, themeInfo } = useTheme();
+  const { state } = useApp();
+  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
+
+  const handleThemeChange = useCallback((newTheme: Theme) => {
+    setTheme(newTheme);
+    setThemeDropdownOpen(false);
+  }, [setTheme]);
+
+  const handleSyncCC = useCallback(async () => {
+    setSyncLoading(true);
+    console.log('Syncing Claude Code...');
+    // TODO: Implement actual sync functionality
+    setTimeout(() => setSyncLoading(false), 1000);
+  }, []);
+
+  // Handle keyboard navigation for theme dropdown
+  const handleThemeDropdownKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setThemeDropdownOpen(false);
+    }
+  }, []);
+
   const sidebarContent = (
     <div className="flex flex-col h-full">
-      {/* User Profile Section with Energy Glow */}
+      {/* User Profile Section */}
       <div className="px-6 mb-6">
         <div className="flex items-center gap-3">
           {/* Avatar with energy glow effect */}
           <div className="relative">
-            {/* Glow layers */}
-            <div className="absolute inset-0 rounded-full bg-[var(--color-primary)]/20 blur-xl" />
-            <div className="absolute inset-0 rounded-full bg-[var(--color-primary)]/10 blur-md animate-pulse" />
-            {/* Avatar */}
+            <div className="absolute inset-0 rounded-full bg-[var(--color-primary)]/20 blur-xl" aria-hidden="true" />
+            <div className="absolute inset-0 rounded-full bg-[var(--color-primary)]/10 blur-md animate-pulse" aria-hidden="true" />
             <img
               src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop&crop=face"
-              alt="Shadow Clone Alpha"
+              alt="Shadow Clone Alpha - User avatar"
               className="relative w-11 h-11 rounded-full object-cover border-2 border-[var(--color-primary)] shadow-[0_0_12px_rgba(var(--color-primary-rgb, 194,101,42),0.5)]"
             />
-            {/* Active status indicator with glow */}
-            <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 ${getStatusColor()} rounded-full border-2 border-[var(--color-surface-container-low)]`} />
+            {/* Active status indicator */}
+            <span 
+              className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[var(--color-surface-container-low)] ${
+                state.shadow.status === 'online' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' :
+                state.shadow.status === 'busy' ? 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]' :
+                state.shadow.status === 'offline' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]' :
+                'bg-gray-500'
+              }`}
+              role="status"
+              aria-label={`Status: ${state.shadow.status}`}
+            />
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="font-headline text-base font-bold text-[var(--color-primary)] truncate tracking-tight">
               Shadow Clone Alpha
             </h1>
             <div className="flex items-center gap-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full ${getStatusColor()}`} />
-              <span className="text-[10px] text-[var(--color-on-surface-variant)] truncate">
-                Local Claude Code: {getStatusLabel()}
-              </span>
+              <StatusIndicator status={state.shadow.status} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 space-y-1">
+      {/* Navigation with ARIA */}
+      <nav 
+        className="flex-1 px-3 space-y-1"
+        role="navigation"
+        aria-label="Main navigation"
+      >
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
@@ -123,11 +178,12 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                   : 'text-[var(--color-on-surface-variant)] hover:bg-[var(--color-surface-variant)]/50 hover:text-[var(--color-on-surface)]'
                 }
               `}
+              aria-current={isActive ? 'page' : undefined}
             >
               {isActive && (
-                <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[var(--color-primary)] shadow-[0_0_10px_rgba(var(--color-primary-rgb, 194,101,42),0.5)]" />
+                <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[var(--color-primary)] shadow-[0_0_10px_rgba(var(--color-primary-rgb, 194,101,42),0.5)]" aria-hidden="true" />
               )}
-              <Icon size={20} className={isActive ? 'opacity-100' : 'opacity-70'} />
+              <Icon size={20} className={isActive ? 'opacity-100' : 'opacity-70'} aria-hidden="true" />
               <span className="font-body text-sm">{item.label}</span>
             </Link>
           );
@@ -136,9 +192,10 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
       {/* Bottom Actions */}
       <div className="px-4 mt-auto space-y-3">
-        {/* Sync CC Button - Design spec style */}
+        {/* Sync CC Button */}
         <button 
           onClick={handleSyncCC}
+          disabled={syncLoading}
           className="
             w-full py-2.5 
             bg-[var(--color-secondary)]/10 border border-[var(--color-secondary)] text-[var(--color-secondary)] 
@@ -148,23 +205,34 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             flex items-center justify-center gap-2 
             shadow-[0_0_10px_rgba(76,215,246,0.2)]
             active:scale-[0.98]
+            disabled:opacity-70 disabled:cursor-not-allowed
           "
+          aria-label="Sync Claude Code"
+          aria-busy={syncLoading}
         >
-          <RefreshCw size={14} className="animate-spin-slow" />
-          SYNC CC
+          <RefreshCw size={14} className={`${syncLoading ? 'animate-spin-slow' : ''}`} aria-hidden="true" />
+          {syncLoading ? 'SYNCING...' : 'SYNC CC'}
         </button>
 
-        {/* Theme Selector */}
+        {/* Theme Selector with ARIA */}
         <div className="relative">
           <button
             onClick={() => setThemeDropdownOpen(!themeDropdownOpen)}
+            onKeyDown={handleThemeDropdownKeyDown}
             className="w-full py-2 px-3 bg-[var(--color-surface-container)] border border-[var(--color-outline-variant)]/50 text-[var(--color-on-surface)] rounded-lg font-body text-xs flex items-center justify-between hover:border-[var(--color-primary)] transition-colors"
+            aria-label={`Current theme: ${themeInfo.name}. Click to change theme.`}
+            aria-expanded={themeDropdownOpen}
+            aria-haspopup="menu"
           >
             <span className="flex items-center gap-2">
-              <Palette size={12} />
+              <Palette size={12} aria-hidden="true" />
               {themeInfo.name}
             </span>
-            <ChevronDown size={12} className={`transition-transform ${themeDropdownOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown 
+              size={12} 
+              className={`transition-transform ${themeDropdownOpen ? 'rotate-180' : ''}`} 
+              aria-hidden="true"
+            />
           </button>
           
           <AnimatePresence>
@@ -174,39 +242,38 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 className="absolute bottom-full left-0 right-0 mb-2 bg-[var(--color-surface-container-high)] border border-[var(--color-outline-variant)] rounded-lg shadow-lg overflow-hidden z-50"
+                role="menu"
+                aria-label="Theme options"
               >
                 {THEMES.map((t) => (
-                  <button
+                  <ThemeDropdownItem
                     key={t.id}
-                    onClick={() => handleThemeChange(t.id)}
-                    className={`
-                      w-full px-3 py-2 text-left text-xs flex items-center justify-between hover:bg-[var(--color-surface-variant)] transition-colors
-                      ${theme === t.id ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-[var(--color-on-surface)]'}
-                    `}
-                  >
-                    <span>{t.name}</span>
-                    <span className="text-[var(--color-on-surface-variant)] text-[10px]">{t.description}</span>
-                  </button>
+                    theme={t.id}
+                    isSelected={theme === t.id}
+                    onSelect={handleThemeChange}
+                    name={t.name}
+                    description={t.description}
+                  />
                 ))}
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Footer Links - Design spec style */}
+        {/* Footer Links */}
         <div className="pt-3 border-t border-[var(--color-outline-variant)]/30 space-y-1">
           <Link 
             href="/support" 
             className="flex items-center gap-2 text-[var(--color-on-surface-variant)] py-2 px-3 rounded-lg hover:bg-[var(--color-surface-variant)]/50 hover:text-[var(--color-on-surface)] transition-all duration-150 text-xs font-body"
           >
-            <HelpCircle size={12} />
+            <HelpCircle size={14} aria-hidden="true" />
             Support
           </Link>
           <Link 
             href="/docs" 
             className="flex items-center gap-2 text-[var(--color-on-surface-variant)] py-2 px-3 rounded-lg hover:bg-[var(--color-surface-variant)]/50 hover:text-[var(--color-on-surface)] transition-all duration-150 text-xs font-body"
           >
-            <FileText size={12} />
+            <FileText size={14} aria-hidden="true" />
             Documentation
           </Link>
         </div>
@@ -216,98 +283,55 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:flex fixed left-0 top-0 h-full w-64 bg-[var(--color-surface-container-low)]/90 backdrop-blur-xl border-r border-[var(--color-outline-variant)]/20 shadow-xl flex-col pt-20 pb-6 z-40">
-        {sidebarContent}
-      </aside>
-
-      {/* Mobile Top App Bar */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-50 h-16 bg-[var(--color-surface)]/80 backdrop-blur-md border-b border-[var(--color-outline-variant)]/30 shadow-sm flex justify-between items-center px-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onMobileClose}
-            className="p-2 -ml-2 text-[var(--color-primary)] hover:bg-[var(--color-surface-variant)] rounded-full transition-colors"
-          >
-            <Menu size={24} />
-          </button>
-          <span className="font-display text-xl font-bold tracking-tighter text-[var(--color-primary)] drop-shadow-[0_0_8px_rgba(208,188,255,0.5)]">
-            Shadow Clone
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          {state.wsConnected ? (
-            <Wifi size={18} className="text-[var(--color-secondary)]" />
-          ) : (
-            <WifiOff size={18} className="text-[var(--color-outline)]" />
-          )}
-          <img
-            src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=40&h=40&fit=crop&crop=face"
-            alt="User avatar"
-            className="w-8 h-8 rounded-full border-2 border-[var(--color-primary)] object-cover shadow-[0_0_8px_rgba(208,188,255,0.6)]"
-          />
-        </div>
-      </header>
-
-      {/* Mobile Navigation Overlay */}
+      {/* Mobile overlay */}
       <AnimatePresence>
         {mobileOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="md:hidden fixed inset-0 bg-black/50 z-40"
-              onClick={onMobileClose}
-            />
-            <motion.aside
-              initial={{ x: -280 }}
-              animate={{ x: 0 }}
-              exit={{ x: -280 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="md:hidden fixed left-0 top-0 h-full w-72 bg-[var(--color-surface-container-low)] backdrop-blur-xl border-r border-[var(--color-outline-variant)]/20 shadow-xl z-50 pt-4"
-            >
-              <div className="flex justify-end px-4">
-                <button
-                  onClick={onMobileClose}
-                  className="p-2 text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)] hover:bg-[var(--color-surface-variant)] rounded-full transition-colors"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-              {sidebarContent}
-            </motion.aside>
-          </>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={onMobileClose}
+            aria-hidden="true"
+          />
         )}
       </AnimatePresence>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[var(--color-surface-container-low)]/95 backdrop-blur-xl border-t border-[var(--color-outline-variant)]/20 flex justify-around items-center pb-safe z-40">
-        {navItems.slice(0, 3).map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-col items-center justify-center w-full h-full ${
-                isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)]'
-              }`}
-            >
-              <Icon size={22} className={isActive ? 'fill-current' : ''} />
-              <span className="text-[10px] mt-1 font-medium">{item.label}</span>
-            </Link>
-          );
-        })}
-        <Link
-          href="/settings"
-          className={`flex flex-col items-center justify-center w-full h-full ${
-            pathname === '/settings' ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)]'
-          }`}
-        >
-          <Settings size={22} />
-          <span className="text-[10px] mt-1 font-medium">Settings</span>
-        </Link>
-      </nav>
+      {/* Desktop sidebar */}
+      <aside 
+        className="hidden md:flex fixed left-0 top-0 bottom-0 w-64 flex-col z-30 border-r border-[var(--color-outline-variant)]/20"
+        style={{
+          background: 'linear-gradient(to bottom, var(--color-surface-container-low), var(--color-surface-container))',
+        }}
+        role="complementary"
+        aria-label="Sidebar"
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile sidebar with animation */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.aside
+            id="mobile-menu"
+            initial={{ x: -280 }}
+            animate={{ x: 0 }}
+            exit={{ x: -280 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed left-0 top-0 bottom-0 w-64 flex flex-col z-50 md:hidden border-r border-[var(--color-outline-variant)]/20"
+            style={{
+              background: 'linear-gradient(to bottom, var(--color-surface-container-low), var(--color-surface-container))',
+            }}
+            role="dialog"
+            aria-label="Mobile navigation menu"
+            aria-modal="true"
+          >
+            {sidebarContent}
+          </motion.aside>
+        )}
+      </AnimatePresence>
     </>
   );
 }
+
+export default memo(Sidebar);

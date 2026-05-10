@@ -1322,3 +1322,153 @@ textarea.input-field {
   --color-info: #3b82f6;
   --color-warning: #f59e0b;
 }
+
+/* ========================================
+   ACCESSIBILITY - FOCUS VISIBLE STATES
+   ======================================== */
+
+/* Global focus-visible styling for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Remove outline for mouse/pointer users */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Specific focus styles for interactive elements */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Links get underline on focus for better visibility */
+a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Form elements focus */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 0;
+}
+
+/* ========================================
+   ACCESSIBILITY - SKIP LINK
+   ======================================== */
+
+/* Skip to content link - visible only on focus */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  z-index: 9999;
+  padding: 12px 24px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 16px;
+  outline: 2px solid var(--color-on-primary);
+  outline-offset: 2px;
+}
+
+/* ========================================
+   ACCESSIBILITY - VISUALLY HIDDEN
+   ======================================== */
+
+/* Screen reader only - hides from visual but accessible */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Show when focused (for skip links) */
+.sr-only-focusable:focus,
+.sr-only-focusable:focus-within {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* ========================================
+   ACCESSIBILITY - LIVE REGIONS
+   ======================================== */
+
+/* Live region for screen reader announcements */
+.live-region {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ========================================
+   PERFORMANCE - WILL CHANGE HINTS
+   ======================================== */
+
+.animate-interactive {
+  will-change: transform;
+}
+
+.animate-fade {
+  will-change: opacity;
+}
+
+/* ========================================
+   PERFORMANCE - CONTAINMENT
+   ======================================== */
+
+.contain-layout {
+  contain: layout;
+}
+
+.contain-paint {
+  contain: paint;
+}
+
+.contain-strict {
+  contain: strict;
+}
+
+/* ========================================
+   LEGACY COLOR ALIASES (for compatibility)
+   ======================================== */
+
+:root {
+  /* Aliases for common color names used in components */
+  --color-text-primary: var(--color-on-surface);
+  --color-text-secondary: var(--color-on-surface-variant);
+  --color-text-muted: var(--color-outline);
+  --color-bg-surface: var(--color-surface);
+  --color-bg-elevated: var(--color-surface-container-high);
+}

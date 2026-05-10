@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -12,6 +12,8 @@ import {
   Loader2,
   AlertCircle,
   Paperclip,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import GlassHeader from '@/components/ui/GlassHeader';
@@ -29,8 +31,15 @@ export default function TaskDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [sseConnected, setSSEConnected] = useState(false);
+  const [connectionMode, setConnectionMode] = useState<'sse' | 'poll'>('sse');
 
-  // Demo messages for terminal style
+  // SSE and polling refs
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Demo messages for terminal style (fallback)
   const [demoMessages] = useState<SyncMessage[]>([
     {
       id: 'msg-1',
@@ -58,6 +67,141 @@ export default function TaskDetailPage() {
     },
   ]);
 
+  // SSE connection setup
+  const connectSSE = useCallback(() => {
+    // Clean up existing connection
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+
+    // Check if SSE is supported
+    if (typeof EventSource === 'undefined') {
+      console.warn('SSE not supported, falling back to polling');
+      setConnectionMode('poll');
+      return;
+    }
+
+    try {
+      const eventSource = new EventSource(`/api/sse?channels=messages,task`);
+      eventSourceRef.current = eventSource;
+
+      eventSource.onopen = () => {
+        console.log('SSE connected');
+        setSSEConnected(true);
+        setConnectionMode('sse');
+      };
+
+      // Handle connection event
+      eventSource.addEventListener('connected', (event) => {
+        console.log('SSE handshake complete', event);
+        setSSEConnected(true);
+      });
+
+      // Handle new messages
+      eventSource.addEventListener('message:new', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.data.taskId === taskId) {
+            const newMessage: SyncMessage = {
+              id: data.data.messageId || `msg-${Date.now()}`,
+              type: data.data.type,
+              content: data.data.content,
+              timestamp: data.data.timestamp || new Date().toISOString(),
+            };
+            setMessages(prev => {
+              // Avoid duplicates
+              if (prev.some(m => m.id === newMessage.id)) return prev;
+              return [...prev, newMessage];
+            });
+          }
+        } catch (e) {
+          console.error('Error parsing SSE message:', e);
+        }
+      });
+
+      // Handle log messages
+      eventSource.addEventListener('message:log', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.data.taskId === taskId) {
+            const logMessage: SyncMessage = {
+              id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+              type: 'claude',
+              content: data.data.log,
+              timestamp: data.data.timestamp || new Date().toISOString(),
+            };
+            setMessages(prev => [...prev, logMessage]);
+          }
+        } catch (e) {
+          console.error('Error parsing log message:', e);
+        }
+      });
+
+      // Handle task updates
+      eventSource.addEventListener('task:updated', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.data.taskId === taskId) {
+            // Refresh task data
+            fetchTask();
+          }
+        } catch (e) {
+          console.error('Error parsing task update:', e);
+        }
+      });
+
+      // Handle task completion
+      eventSource.addEventListener('task:completed', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.data.taskId === taskId) {
+            // Refresh task data
+            fetchTask();
+          }
+        } catch (e) {
+          console.error('Error parsing task completion:', e);
+        }
+      });
+
+      // Handle errors
+      eventSource.onerror = (err) => {
+        console.error('SSE error:', err);
+        setSSEConnected(false);
+        
+        // Clean up
+        eventSource.close();
+        eventSourceRef.current = null;
+
+        // Fall back to polling after a brief delay
+        console.log('SSE connection failed, falling back to polling');
+        setConnectionMode('poll');
+      };
+
+    } catch (err) {
+      console.error('Failed to create SSE connection:', err);
+      setConnectionMode('poll');
+    }
+  }, [taskId]);
+
+  // Fallback polling
+  const startPolling = useCallback(() => {
+    if (pollIntervalRef.current) return;
+    
+    pollIntervalRef.current = setInterval(() => {
+      pollMessages();
+    }, 5000);
+  }, []);
+
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  }, []);
+
   // Fetch task data
   const fetchTask = useCallback(async () => {
     try {
@@ -81,7 +225,7 @@ export default function TaskDetailPage() {
     }
   }, [taskId]);
 
-  // Poll for messages every 5 seconds
+  // Poll for messages (fallback mode)
   const pollMessages = useCallback(async () => {
     try {
       const res = await fetch(`/api/tasks/${taskId}/messages`);
@@ -94,17 +238,39 @@ export default function TaskDetailPage() {
     }
   }, [taskId]);
 
+  // Initial setup
   useEffect(() => {
     fetchTask();
   }, [fetchTask]);
 
+  // SSE connection or polling based on mode
   useEffect(() => {
-    // Initial poll
-    pollMessages();
-    // Poll every 5 seconds
-    const interval = setInterval(pollMessages, 5000);
-    return () => clearInterval(interval);
-  }, [pollMessages]);
+    if (isLoading) return;
+
+    if (connectionMode === 'sse') {
+      connectSSE();
+    } else {
+      pollMessages();
+      startPolling();
+    }
+
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+      stopPolling();
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
+  }, [isLoading, connectionMode, connectSSE, pollMessages, startPolling, stopPolling]);
+
+  // Reconnect SSE when switching back
+  const switchToSSE = useCallback(() => {
+    stopPolling();
+    setConnectionMode('sse');
+    connectSSE();
+  }, [connectSSE, stopPolling]);
 
   const getPriorityClass = (priority: Priority) => {
     switch (priority) {
@@ -131,8 +297,8 @@ export default function TaskDetailPage() {
       timestamp: new Date().toISOString(),
     };
 
-    // Use demo messages for now
-    setMessages(prev => [...demoMessages, userMessage]);
+    // Optimistically add message
+    setMessages(prev => [...prev, userMessage]);
     setInputValue('');
 
     try {
@@ -143,14 +309,16 @@ export default function TaskDetailPage() {
       });
 
       if (!res.ok) throw new Error('Failed to send message');
-      await pollMessages();
-
-      // Simulate Claude response after sending
+      
+      // Wait a bit and refresh messages
       setTimeout(async () => {
         await pollMessages();
-      }, 2000);
+      }, 1000);
     } catch (err) {
       console.error('Error sending message:', err);
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m.id !== userMessage.id));
+      setInputValue(inputValue);
     } finally {
       setIsSending(false);
     }
@@ -215,6 +383,39 @@ export default function TaskDetailPage() {
           <Link href="/tasks" className="hover:text-[var(--color-primary)] transition-colors">Task List</Link>
           <ChevronRight size={12} />
           <span className="text-[var(--color-on-surface)]">{task.id.slice(0, 10).toUpperCase()}</span>
+          
+          {/* Connection Status */}
+          <div className="ml-auto flex items-center gap-2">
+            {connectionMode === 'sse' && (
+              <button
+                onClick={() => setConnectionMode('poll')}
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-[var(--color-surface-container)] text-[var(--color-secondary)] hover:bg-[var(--color-surface-container-high)] transition-colors"
+                title="Click to switch to polling mode"
+              >
+                {sseConnected ? (
+                  <>
+                    <Wifi size={12} className="text-[var(--color-secondary)]" />
+                    <span className="animate-pulse">LIVE</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff size={12} className="text-[var(--color-outline)]" />
+                    <span>RECONNECTING</span>
+                  </>
+                )}
+              </button>
+            )}
+            {connectionMode === 'poll' && (
+              <button
+                onClick={switchToSSE}
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-[var(--color-surface-container)] text-[var(--color-outline)] hover:bg-[var(--color-surface-container-high)] transition-colors"
+                title="Click to switch to SSE mode"
+              >
+                <WifiOff size={12} />
+                <span>5S POLL</span>
+              </button>
+            )}
+          </div>
         </nav>
 
         {/* Content Grid */}

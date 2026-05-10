@@ -1,395 +1,514 @@
-# ShadowMe
+# ShadowMe - 智能影子分身协作看板
 
-<div align="center">
+<p align="center">
+  <img src="public/logo.svg" alt="ShadowMe" width="120" />
+</p>
 
-![ShadowMe Logo](https://img.shields.io/badge/Shadow%20Clone-影子分身-29C16A?style=for-the-badge&logo=ghost&logoColor=white)
+<p align="center">
+  <strong>让 AI 影子分身成为你的协作伙伴</strong>
+</p>
 
-### 当主角不在时，影子替他战斗
-
----
-
-> **"ShadowMe 是一个智能化的个人影子分身协作系统。核心价值在于：当项目负责人不在或忙碌时，协作方可以通过这个看板提交任务需求，影子分身（基于 Claude Code）会自动接收任务、在本地工作目录执行、并将结果返回给看板，形成一个闭环的自动化协作流程。"**
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat&logo=next.js&logoColor=white)](https://nextjs.org/)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-FF6B35?style=flat&logo=anthropic&logoColor=white)](https://claude.ai/code)
-
-</div>
-
----
-
-## ✨ 核心特性
-
-| 特性 | 描述 |
-|------|------|
-| 🤖 **智能影子分身** | 基于 Claude Code 的 AI 助手，24/7 待命 |
-| 📋 **协作看板** | 直观的 Kanban 风格任务管理 |
-| ⚡ **自动执行** | 任务直达 Claude Code，结果自动返回 |
-| 🔗 **GitLab 集成** | 代码 MR、文档提交自动化 |
-| 🔒 **本地部署** | 数据本地存储，安全可控 |
-| 🎨 **大师级 UI** | 现代化玻璃态设计，流畅动效 |
+<p align="center">
+  <a href="https://github.com/xiaopengs/ShadowMe/stargazers">
+    <img src="https://img.shields.io/github/stars/xiaopengs/ShadowMe?style=flat-square" alt="Stars" />
+  </a>
+  <a href="https://github.com/xiaopengs/ShadowMe/issues">
+    <img src="https://img.shields.io/github/issues/xiaopengs/ShadowMe?style=flat-square" alt="Issues" />
+  </a>
+  <a href="https://github.com/xiaopengs/ShadowMe/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/xiaopengs/ShadowMe?style=flat-square" alt="License" />
+  </a>
+</p>
 
 ---
 
-## 🚀 安装与运行
+## 项目介绍
+
+ShadowMe 是一款智能影子分身协作看板，旨在将 Claude Code 等 AI 工具融入日常工作流程。通过 ShadowMe，你可以创建任务并交给 AI 影子分身自动处理，实现人机协作的高效工作方式。
+
+### 核心场景
+
+```
+协作方来访 → 创建任务 → 影子分身自动领取 → 本地执行 → 结果返回
+```
+
+1. **创建任务**：协作者在看板中创建任务，描述需要解决的问题或需求
+2. **影子领取**：Claude Code（影子分身）自动接收待处理任务
+3. **本地执行**：影子分身在本地环境中执行代码、搜索、分析
+4. **结果返回**：执行结果自动同步到看板，协作者可查看进度和结果
+
+### 系统架构
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        ShadowMe 看板系统                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐   │
+│  │   前端界面   │───▶│   API 路由   │───▶│  SQLite 数据库   │   │
+│  │  (Next.js)   │    │  (REST API)  │    │  (任务/消息/状态) │   │
+│  └──────────────┘    └──────────────┘    └──────────────────┘   │
+│         │                   │                                    │
+│         │                   ▼                                    │
+│         │          ┌──────────────────┐                          │
+│         │          │  Claude Code    │                          │
+│         │          │   (影子分身)      │                          │
+│         │          └──────────────────┘                          │
+│         │                   │                                    │
+│         │                   ▼                                    │
+│         │          ┌──────────────────┐                          │
+│         └─────────▶│  CC Sync Log    │◀──── 实时消息推送        │
+│                    │   (终端风格)       │                          │
+│                    └──────────────────┘                          │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 快速开始
 
 ### 环境要求
 
-| 要求 | 版本 | 说明 |
-|------|------|------|
-| Node.js | >= 20.0.0 | 推荐使用 LTS 版本 |
-| npm | >= 10.0.0 | 或使用 yarn/pnpm |
-| 数据库 | SQLite | 自动创建，无需安装 |
+- Node.js >= 20.0.0
+- npm / yarn / pnpm
 
 ### 安装步骤
 
 ```bash
-# 1. 克隆项目
-git clone https://github.com/yourusername/ShadowMe.git
+# 克隆项目
+git clone https://github.com/xiaopengs/ShadowMe.git
 cd ShadowMe
 
-# 2. 安装依赖
+# 安装依赖
 npm install
 
-# 3. 启动开发服务器
+# 配置环境变量
+cp .env.example .env.local
+# 编辑 .env.local 填入配置
+
+# 初始化数据库
+npm run db:init
+
+# 启动开发服务器
 npm run dev
 ```
 
-访问 `http://localhost:3000` 打开看板。
+访问 [http://localhost:3000](http://localhost:3000) 查看应用。
+
+### 环境变量配置
+
+```env
+# 数据库路径（可选，默认 ./data/ShadowMe.db）
+DATABASE_PATH=./data/ShadowMe.db
+
+# API 密钥（用于 Webhook 认证）
+API_KEY=your-api-key-here
+
+# GitLab 集成（可选）
+GITLAB_TOKEN=your-gitlab-token
+```
+
+---
+
+## 功能特性
+
+### 🎨 8 套精美主题
+
+| 主题 | 风格 | 特点 |
+|------|------|------|
+| **sahara** | 沙漠暖调 | 米黄色调，温馨自然 |
+| **shadow-clone** | 暗夜神秘 | 深色系，荧光蓝点缀 |
+| **geist-dark** | 极简暗色 | 纯黑底，高对比度 |
+| **neon-tokyo** | 霓虹东京 | 赛博朋克，霓虹粉蓝 |
+| **candy** | 糖果甜系 | 马卡龙色系，圆润可爱 |
+| **glacier** | 冰川蓝调 | 冷色系，清新专业 |
+| **lumina-tech** | 科技光效 | 渐变蓝紫，光影效果 |
+| **alexandria** | 亚历山大 | 优雅深蓝，学术气质 |
+
+### 📋 协作看板
+
+- **拖拽操作**：通过拖拽调整任务状态和优先级
+- **列视图**：pending → in_progress → completed → closed
+- **任务卡片**：展示类型、优先级、描述、标签等信息
+- **实时统计**：看板顶部显示各状态任务数量
+
+### 💬 CC Sync Log
+
+终端风格的通信组件，实现与影子分身的实时交互：
+
+- 命令行界面设计，支持打字机效果
+- 支持用户消息、Claude 响应、系统通知三种消息类型
+- 自动滚动和消息时间戳
+
+### 🔔 实时消息推送
+
+- **SSE（Server-Sent Events）**：服务器主动推送更新
+- **轮询降级**：不支持 SSE 时自动切换到轮询模式
+- **即时通知**：任务状态变更、消息到达等实时提醒
+
+### 🔗 GitLab 集成
+
+- MR 链接解析和展示
+- 分支信息关联
+- 提交记录追踪（规划中）
+
+### 📱 响应式设计
+
+- 桌面端：完整侧边栏布局
+- 移动端：底部导航栏
+- 自适应卡片和列表视图
+
+---
+
+## CC 插件对接
+
+ShadowMe 提供 Webhook 接口供 Claude Code 等工具对接，实现任务领取和状态同步。
+
+### Webhook 端点
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/webhook` | POST | 接收 CC 消息 |
+| `/api/shadow/status` | GET/POST | 影子状态管理 |
+| `/api/tasks/[id]/take` | POST | 领取任务 |
+| `/api/tasks/[id]/complete` | POST | 完成任务 |
+
+### 消息协议格式
+
+```json
+{
+  "type": "message",
+  "taskId": "task-uuid",
+  "content": "执行状态或结果描述",
+  "timestamp": "2024-01-01T12:00:00Z"
+}
+```
+
+### API Key 认证
+
+```bash
+# 请求头携带 API Key
+curl -X POST http://localhost:3000/api/webhook \
+  -H "Authorization: Bearer your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"type": "message", "taskId": "...", "content": "..."}'
+```
+
+### 任务生命周期
+
+```
+pending → in_progress → completed → needs_feedback → closed
+  │           │              │            │
+  │           ▼              ▼            ▼
+  └───── 影子领取       提交结果      确认反馈
+```
+
+---
+
+## API 文档
+
+### 任务接口
+
+#### 获取任务列表
+
+```
+GET /api/tasks
+```
+
+**查询参数：**
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| status | string | 按状态筛选，支持逗号分隔多个值 |
+| type | string | 按类型筛选 |
+| priority | string | 按优先级筛选 |
+
+**响应示例：**
+
+```json
+{
+  "tasks": [
+    {
+      "id": "uuid",
+      "title": "修复登录问题",
+      "type": "technical_issue",
+      "priority": "high",
+      "status": "pending",
+      "description": "用户反馈登录失败",
+      "tags": ["bug", "urgent"],
+      "attachments": [],
+      "createdBy": "访客",
+      "createdAt": "2024-01-01T12:00:00Z",
+      "updatedAt": "2024-01-01T12:00:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+#### 创建任务
+
+```
+POST /api/tasks
+```
+
+**请求体：**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| title | string | ✅ | 任务标题 |
+| type | string | ❌ | 类型：technical_issue / design_doc / code_review / other |
+| priority | string | ❌ | 优先级：low / medium / high / urgent |
+| description | string | ❌ | 任务描述 |
+| tags | string[] | ❌ | 标签列表 |
+| attachments | object[] | ❌ | 附件列表 |
+| expectedDelivery | string | ❌ | 预期交付时间 |
+| dueDate | string | ❌ | 截止日期 |
+| createdBy | string | ❌ | 创建者 |
+
+**响应：** 返回创建的任务对象，状态码 201
+
+#### 获取任务详情
+
+```
+GET /api/tasks/[id]
+```
+
+**响应：** 返回任务对象，状态码 404 表示任务不存在
+
+#### 更新任务
+
+```
+PATCH /api/tasks/[id]
+```
+
+**请求体：** 支持所有任务字段的部分更新
+
+**响应：** 返回更新后的任务对象
+
+#### 删除任务
+
+```
+DELETE /api/tasks/[id]
+```
+
+**响应：**
+
+```json
+{
+  "success": true
+}
+```
+
+### 消息接口
+
+#### 获取任务消息
+
+```
+GET /api/tasks/[id]/messages
+```
+
+**响应示例：**
+
+```json
+{
+  "messages": [
+    {
+      "id": "uuid",
+      "taskId": "task-uuid",
+      "type": "user",
+      "content": "请帮我处理这个问题",
+      "createdAt": "2024-01-01T12:00:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+#### 发送消息
+
+```
+POST /api/tasks/[id]/messages
+```
+
+**请求体：**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| content | string | ✅ | 消息内容 |
+| type | string | ❌ | 消息类型：user / system / claude |
+
+**响应：** 返回创建的消息对象
+
+### 影子状态接口
+
+#### 获取状态
+
+```
+GET /api/shadow/status
+```
+
+**响应示例：**
+
+```json
+{
+  "id": "shadow-1",
+  "name": "影子分身",
+  "status": "online",
+  "currentTaskId": "task-uuid",
+  "currentTask": { ... },
+  "lastHeartbeat": "2024-01-01T12:00:00Z",
+  "capabilities": ["代码审查", "方案设计"],
+  "autoTakeTasks": false
+}
+```
+
+#### 更新状态
+
+```
+POST /api/shadow/status
+```
+
+**请求体：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| status | string | online / busy / offline / unknown |
+| capabilities | string[] | 能力列表 |
+| autoTakeTasks | boolean | 是否自动领取任务 |
+
+---
+
+## 技术栈
+
+| 类别 | 技术 | 说明 |
+|------|------|------|
+| **框架** | Next.js 15 App Router | React 全栈框架 |
+| **语言** | TypeScript | 类型安全 |
+| **数据库** | SQLite (better-sqlite3) | 轻量级关系数据库 |
+| **样式** | Tailwind CSS | 原子化 CSS |
+| **动画** | Framer Motion | React 动画库 |
+| **图标** | Lucide React | 开源图标库 |
+| **拖拽** | @dnd-kit | React 拖拽库 |
+
+---
+
+## 项目结构
+
+```
+ShadowMe/
+├── public/                  # 静态资源
+├── scripts/                 # 脚本文件
+│   └── init-db.js          # 数据库初始化
+├── src/
+│   ├── app/                # Next.js App Router
+│   │   ├── api/            # API 路由
+│   │   │   ├── board/      # 看板统计 API
+│   │   │   ├── gitlab/     # GitLab 集成 API
+│   │   │   ├── shadow/     # 影子状态 API
+│   │   │   ├── tasks/      # 任务 API
+│   │   │   └── webhook/    # Webhook 接收
+│   │   ├── archive/        # 归档页面
+│   │   ├── settings/       # 设置页面
+│   │   ├── tasks/          # 任务页面
+│   │   └── page.tsx        # 首页（看板）
+│   ├── components/         # React 组件
+│   │   ├── board/          # 看板组件
+│   │   │   ├── BoardColumn.tsx
+│   │   │   ├── BoardStats.tsx
+│   │   │   └── TaskCard.tsx
+│   │   ├── layout/         # 布局组件
+│   │   │   ├── Sidebar.tsx
+│   │   │   └── MobileNav.tsx
+│   │   ├── tasks/          # 任务组件
+│   │   │   ├── TaskDetail.tsx
+│   │   │   └── TaskForm.tsx
+│   │   ├── sync/           # 同步组件
+│   │   │   ├── CCSyncLog.tsx
+│   │   │   └── SyncMessage.tsx
+│   │   └── ui/             # 通用 UI 组件
+│   │       ├── Button.tsx
+│   │       ├── Card.tsx
+│   │       ├── Modal.tsx
+│   │       └── Toast.tsx
+│   ├── context/            # React Context
+│   │   ├── ThemeContext.tsx
+│   │   └── ToastContext.tsx
+│   ├── lib/                 # 工具库
+│   │   ├── db.ts           # 数据库操作
+│   │   ├── logger.ts       # 日志工具
+│   │   └── theme.ts        # 主题配置
+│   └── types/              # TypeScript 类型
+│       └── index.ts
+├── __tests__/              # 测试文件
+│   ├── api/                # API 测试
+│   └── helpers/           # 测试辅助
+├── .env.example            # 环境变量示例
+├── package.json
+├── tailwind.config.ts
+├── tsconfig.json
+└── README.md
+```
+
+---
+
+## 开发指南
+
+### 运行测试
+
+```bash
+# 运行所有测试
+npm test
+
+# 运行特定测试文件
+npm test -- tasks.test.ts
+
+# 监听模式
+npm test -- --watch
+```
+
+### 代码规范
+
+```bash
+# 代码检查
+npm run lint
+
+# 类型检查
+npx tsc --noEmit
+```
 
 ### 构建生产版本
 
 ```bash
-# 1. 构建项目
 npm run build
-
-# 2. 启动生产服务器
 npm start
-
-# 或使用自定义端口
-PORT=8080 npm start
-```
-
-### 内网部署
-
-允许内网其他机器访问：
-
-```bash
-# 开发模式（所有网卡）
-npm run dev -- -H 0.0.0.0
-
-# 生产模式
-HOST=0.0.0.0 npm start
-```
-
-其他机器访问：`http://<your-ip>:3000`
-
----
-
-## ⚙️ 配置指南
-
-### 环境变量配置
-
-创建 `.env.local` 文件（可选，会使用默认值）：
-
-```env
-# ============ 看板服务配置 ============
-# 基础路径，默认为 /
-NEXT_PUBLIC_BASE_PATH=/
-
-# ============ GitLab 集成配置（可选）===========
-# GitLab 服务器地址
-GITLAB_URL=https://gitlab.com
-
-# GitLab Personal Access Token
-GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
-
-# 默认项目 ID 或路径
-GITLAB_DEFAULT_PROJECT=namespace/project
-
-# ============ Claude Code 插件配置 ============
-# 看板 API 地址
-SHADOW_BOARD_URL=http://localhost:3000
-
-# Claude Code 工作目录
-WORKING_DIRECTORY=/path/to/your/work
-```
-
-### GitLab 集成配置
-
-1. **创建 Personal Access Token**
-   - 登录 GitLab → Settings → Access Tokens
-   - 创建 Token，勾选权限：`api`、`read_repository`、`write_repository`
-
-2. **配置 Token**
-   - 方式一：在 `.env.local` 中配置
-   - 方式二：在 Web 界面设置页配置
-
-3. **验证连接**
-   - 访问 `/settings` → GitLab 标签页
-   - 填写配置后保存
-
-### Claude Code 插件配置
-
-```bash
-# 进入插件目录
-cd plugins/ShadowMe-plugin
-
-# 安装插件依赖
-npm install
-
-# 复制配置模板
-cp .env.example .env
-
-# 编辑配置
-vim .env
-```
-
-插件配置项：
-
-| 变量 | 必填 | 说明 | 示例 |
-|------|------|------|------|
-| `SHADOW_BOARD_URL` | 是 | 看板地址 | `http://localhost:3000` |
-| `GITLAB_URL` | 否 | GitLab 地址 | `https://gitlab.com` |
-| `GITLAB_TOKEN` | 否 | GitLab Token | `glpat-xxx` |
-| `GITLAB_DEFAULT_PROJECT` | 否 | 默认项目 | `mygroup/myproject` |
-| `WORKING_DIRECTORY` | 否 | 工作目录 | `/home/user/projects` |
-
----
-
-## 🎯 工作原理
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                           用户访问层                                  │
-│                        (浏览器 / 协作方)                              │
-└─────────────────────────────┬───────────────────────────────────────┘
-                              │ HTTP/WebSocket
-                              ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Next.js 应用层                                 │
-│  ┌───────────────┐  ┌───────────────┐  ┌─────────────────────────┐ │
-│  │   协作看板    │  │   任务管理    │  │    影子分身状态监控     │ │
-│  └───────────────┘  └───────────────┘  └─────────────────────────┘ │
-└─────────────────────────────┬───────────────────────────────────────┘
-                              │
-        ┌─────────────────────┼─────────────────────┐
-        ▼                     ▼                     ▼
-┌───────────────┐    ┌───────────────┐    ┌───────────────┐
-│   SQLite DB   │    │  WebSocket   │    │  Claude Code  │
-│   (本地存储)   │    │   (实时通知)  │    │   (任务执行)   │
-└───────────────┘    └───────────────┘    └───────┬───────┘
-                                                  │
-                                                  ▼
-                                          ┌───────────────┐
-                                          │    GitLab     │
-                                          │   (代码提交)   │
-                                          └───────────────┘
-```
-
-### 任务流转
-
-1. **创建任务** → 协作者在看板创建任务
-2. **任务下发** → 任务通过 OpenKit 协议发送给 Claude Code
-3. **自动执行** → Claude Code 在本地工作目录执行任务
-4. **结果回传** → 执行结果（MR 链接、文档等）返回看板
-5. **状态更新** → 任务卡片自动更新状态为"已完成"
-
----
-
-## 📁 项目结构
-
-```
-ShadowMe/
-├── src/
-│   ├── app/                    # Next.js App Router
-│   │   ├── api/               # API 路由
-│   │   │   ├── tasks/         # 任务 CRUD
-│   │   │   ├── board/         # 看板数据
-│   │   │   ├── shadow/        # 影子分身状态
-│   │   │   └── gitlab/        # GitLab 集成
-│   │   ├── tasks/             # 任务列表页
-│   │   ├── settings/          # 设置页
-│   │   └── page.tsx           # 首页（看板）
-│   ├── components/             # React 组件
-│   │   ├── board/             # 看板组件
-│   │   ├── tasks/             # 任务组件
-│   │   ├── shadow/             # 影子分身组件
-│   │   ├── layout/             # 布局组件
-│   │   └── ui/                 # UI 基础组件
-│   ├── context/               # React Context
-│   ├── lib/                   # 工具库
-│   └── types/                 # TypeScript 类型
-├── plugins/
-│   └── ShadowMe-plugin/   # Claude Code 插件
-├── docs/                      # 文档
-└── data/                      # SQLite 数据库（自动生成）
 ```
 
 ---
 
-## 🎨 设计理念
-
-### 设计语言
-
-沿用 **moxt-demo** 的设计风格：
-
-- **色彩系统**：主色 #29C16A（品牌绿）+ #0EA5E9（科技蓝）
-- **玻璃态效果**：backdrop-filter blur + 透明边框
-- **渐变文字**：多色渐变增加视觉层次
-- **流畅动效**：Framer Motion 驱动的微交互
-
-### 优先级标识
-
-| 优先级 | 颜色 | 使用场景 |
-|--------|------|----------|
-| 🔴 紧急 | #EF4444 | 需要立即处理 |
-| 🟠 高 | #F59E0B | 重要但不紧急 |
-| 🔵 中 | #0EA5E9 | 普通任务 |
-| ⚪ 低 | #6B7280 | 可以延后 |
-
-### 任务类型
-
-| 类型 | 图标 | 描述 |
-|------|------|------|
-| 技术问题 | 💻 | 代码调试、bug 修复 |
-| 方案设计 | 📄 | 技术方案、架构设计 |
-| 代码审查 | 💬 | Code Review |
-| 其他 | 📌 | 其他类型任务 |
-
----
-
-## 🔌 API 接口
-
-### 任务管理
-
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | `/api/tasks` | 获取任务列表 |
-| POST | `/api/tasks` | 创建任务 |
-| GET | `/api/tasks/:id` | 获取任务详情 |
-| PATCH | `/api/tasks/:id` | 更新任务 |
-| DELETE | `/api/tasks/:id` | 删除任务 |
-| POST | `/api/tasks/:id/take` | 领取任务 |
-| POST | `/api/tasks/:id/complete` | 完成任务 |
-
-### 影子分身
-
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | `/api/shadow/status` | 获取状态 |
-| POST | `/api/shadow/status` | 更新状态 |
-
-### GitLab
-
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| POST | `/api/gitlab` | 执行 GitLab 操作 |
-
----
-
-## 🛠️ Claude Code 插件
-
-### 安装插件
-
-```bash
-cd plugins/ShadowMe-plugin
-npm install
-cp .env.example .env
-vim .env  # 编辑配置
-```
-
-### 插件命令
-
-```bash
-/shadow help          # 显示帮助
-/shadow status        # 查看状态
-/shadow tasks         # 查看待处理任务
-/shadow take <id>     # 领取任务
-/shadow info <id>     # 查看任务详情
-/shadow complete <id> # 完成任务
-```
-
----
-
-## 📊 使用场景
-
-### 场景一：远程技术支持
-
-> 小王需要主程序员张三的帮助解决一个技术问题，但张三正在开会
-
-1. 小王访问 `http://zhangsan.local:3000`
-2. 创建任务，填写问题描述
-3. 影子分身自动领取并处理
-4. GitLab 上创建 MR，小王收到通知
-
-### 场景二：快速方案生成
-
-> 产品经理需要快速生成一个技术方案文档
-
-1. 创建"方案设计"类型任务
-2. 填写需求背景和约束条件
-3. 影子分身在本地生成方案
-4. 方案文档自动提交到 GitLab
-
-### 场景三：代码审查请求
-
-> 团队成员需要帮忙 review 代码
-
-1. 创建"代码审查"类型任务
-2. 上传或粘贴代码
-3. 影子分身进行深度审查
-4. 审查报告生成并展示
-
----
-
-## 🔒 安全说明
-
-- ✅ 数据本地 SQLite 存储
-- ✅ 参数化查询防 SQL 注入
-- ✅ API 密钥环境变量存储
-- ⚠️ 本地网络访问控制
-- ⚠️ 建议配合内网防火墙
-
----
-
-## 📝 常用命令
-
-| 命令 | 说明 |
-|------|------|
-| `npm install` | 安装依赖 |
-| `npm run dev` | 启动开发服务器 |
-| `npm run build` | 构建生产版本 |
-| `npm start` | 启动生产服务器 |
-| `npm run lint` | 运行代码检查 |
-
----
-
-## 📝 文档
-
-- [需求规格说明书](docs/PRD.md)
-- [架构设计文档](docs/ARCHITECTURE.md)
-- [代码审查报告](docs/REVIEW-CODE.md)
-
----
-
-## 🤝 贡献
+## 贡献指南
 
 欢迎提交 Issue 和 Pull Request！
 
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
+3. 提交更改 (`git commit -m 'Add amazing feature'`)
+4. 推送分支 (`git push origin feature/amazing-feature`)
+5. 创建 Pull Request
+
 ---
 
-## 📄 许可证
+## 许可证
 
-MIT License - 详见 [LICENSE](LICENSE) 文件
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
 
 ---
 
-<div align="center">
+## 致谢
 
-**Made with ❤️ by ShadowMe Team**
-
-*"当主角不在时，影子替他战斗。"*
-
-</div>
+- [Next.js](https://nextjs.org/) - React 框架
+- [Tailwind CSS](https://tailwindcss.com/) - CSS 框架
+- [Framer Motion](https://www.framer.com/motion/) - 动画库
+- [Lucide](https://lucide.dev/) - 图标库
+- [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) - SQLite 驱动

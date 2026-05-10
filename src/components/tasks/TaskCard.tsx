@@ -1,6 +1,10 @@
+/**
+ * TaskCard Component - Enhanced with Accessibility & Performance
+ * Features: React.memo, useCallback, ARIA attributes, keyboard navigation
+ */
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import {
   MessageSquare,
@@ -9,13 +13,9 @@ import {
   MoreHorizontal,
   Clock,
   User,
-  ExternalLink,
   CheckCircle,
-  XCircle,
   Trash2,
-  ChevronDown,
-  ChevronUp,
-  GripVertical
+  GripVertical,
 } from 'lucide-react';
 import type { Task, TaskType, Priority, TaskStatus } from '@/types';
 import { TASK_TYPE_LABELS, PRIORITY_LABELS, STATUS_LABELS } from '@/types';
@@ -25,15 +25,21 @@ const typeIcons: Record<TaskType, React.ElementType> = {
   technical_issue: Code,
   design_doc: FileText,
   code_review: MessageSquare,
-  other: MoreHorizontal
+  other: MoreHorizontal,
 };
 
-const priorityColors = {
+const priorityColors: Record<Priority, string> = {
   urgent: 'bg-[var(--color-priority-urgent)]',
   high: 'bg-[var(--color-priority-high)]',
   medium: 'bg-[var(--color-priority-medium)]',
-  low: 'bg-[var(--color-priority-low)]'
+  low: 'bg-[var(--color-priority-low)]',
 };
+
+// Memoized type icon component
+const TypeIconComponent = memo(function TypeIconComponent({ type }: { type: TaskType }) {
+  const Icon = typeIcons[type];
+  return <Icon size={14} aria-hidden="true" />;
+});
 
 interface TaskCardProps {
   task: Task;
@@ -42,7 +48,33 @@ interface TaskCardProps {
   isDragging?: boolean;
 }
 
-export default function TaskCard({ task, onEdit, compact = false, isDragging = false }: TaskCardProps) {
+// Format date helper
+const formatDate = (dateStr: string): string => {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diff < 60) return '刚刚';
+  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}天前`;
+
+  return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+};
+
+// Get duration helper
+const getDuration = (task: Task): string | null => {
+  if (!task.startedAt) return null;
+  const start = new Date(task.startedAt);
+  const end = task.completedAt ? new Date(task.completedAt) : new Date();
+  const hours = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60));
+  const minutes = Math.floor((end.getTime() - start.getTime()) / (1000 * 60)) % 60;
+
+  if (hours > 0) return `${hours}小时${minutes}分钟`;
+  return `${minutes}分钟`;
+};
+
+function TaskCard({ task, onEdit, compact = false, isDragging = false }: TaskCardProps) {
   const { deleteTask, takeTask } = useApp();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -50,8 +82,7 @@ export default function TaskCard({ task, onEdit, compact = false, isDragging = f
   const [statusChanged, setStatusChanged] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const prevStatusRef = useRef<TaskStatus>(task.status);
-
-  const TypeIcon = typeIcons[task.type];
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   // Check for reduced motion preference
   const prefersReducedMotion = typeof window !== 'undefined' 
@@ -68,52 +99,77 @@ export default function TaskCard({ task, onEdit, compact = false, isDragging = f
     }
   }, [task.status]);
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (diff < 60) return '刚刚';
-    if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
-    if (diff < 604800) return `${Math.floor(diff / 86400)}天前`;
-
-    return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
-  };
-
-  const getDuration = () => {
-    if (!task.startedAt) return null;
-    const start = new Date(task.startedAt);
-    const end = task.completedAt ? new Date(task.completedAt) : new Date();
-    const hours = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60));
-    const minutes = Math.floor((end.getTime() - start.getTime()) / (1000 * 60)) % 60;
-
-    if (hours > 0) return `${hours}小时${minutes}分钟`;
-    return `${minutes}分钟`;
-  };
-
-  const handleDelete = async (e: React.MouseEvent) => {
+  // Handle delete with callback
+  const handleDelete = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     if (confirm('确定要删除这个任务吗？')) {
       await deleteTask(task.id);
     }
     setIsMenuOpen(false);
-  };
+  }, [deleteTask, task.id]);
 
-  const handleTake = async (e: React.MouseEvent) => {
+  // Handle take with callback
+  const handleTake = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     await takeTask(task.id);
     setIsMenuOpen(false);
-  };
+  }, [takeTask, task.id]);
 
-  const duration = getDuration();
+  // Toggle menu with callback
+  const toggleMenu = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsMenuOpen(prev => !prev);
+  }, []);
 
-  // Animation variants - fixed type issues
+  // Close menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    if (isMenuOpen) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [isMenuOpen]);
+
+  // Handle card click with callback
+  const handleCardClick = useCallback(() => {
+    onEdit?.(task);
+  }, [onEdit, task]);
+
+  // Handle keyboard navigation
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleCardClick();
+    }
+    if (e.key === 'Escape') {
+      setIsMenuOpen(false);
+      menuButtonRef.current?.focus();
+    }
+  }, [handleCardClick]);
+
+  // Handle menu keyboard
+  const handleMenuKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setIsMenuOpen(false);
+      menuButtonRef.current?.focus();
+    }
+  }, []);
+
+  const duration = getDuration(task);
+
+  // Animation variants
   const cardVariants: Variants = {
     initial: { 
       opacity: 0, 
       y: 20,
-      scale: 0.98
+      scale: 0.98,
     },
     animate: { 
       opacity: 1, 
@@ -121,25 +177,29 @@ export default function TaskCard({ task, onEdit, compact = false, isDragging = f
       scale: 1,
       transition: {
         duration: prefersReducedMotion ? 0.1 : 0.3,
-        ease: [0.4, 0, 0.2, 1] as const
-      }
+        ease: [0.4, 0, 0.2, 1] as const,
+      },
     },
     exit: { 
       opacity: 0, 
       y: -10,
       scale: 0.95,
       transition: {
-        duration: prefersReducedMotion ? 0.1 : 0.2
-      }
+        duration: prefersReducedMotion ? 0.1 : 0.2,
+      },
     },
     hover: {
       y: -4,
       transition: {
         duration: 0.2,
-        ease: [0.4, 0, 0.2, 1] as const
-      }
-    }
+        ease: [0.4, 0, 0.2, 1] as const,
+      },
+    },
   };
+
+  // Generate unique ID for ARIA
+  const cardId = `task-card-${task.id}`;
+  const menuId = `task-menu-${task.id}`;
 
   return (
     <motion.div
@@ -150,39 +210,44 @@ export default function TaskCard({ task, onEdit, compact = false, isDragging = f
       whileHover={isDragging ? {} : "hover"}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={() => onEdit?.(task)}
+      onClick={handleCardClick}
+      onKeyDown={handleKeyDown}
       className={`
         glass-card p-5 cursor-pointer relative group 
         ${compact ? 'p-4' : ''}
         ${isDragging ? 'opacity-90 shadow-xl scale-[1.02]' : ''}
         ${statusChanged ? 'ring-2 ring-[var(--color-primary)]/50' : ''}
       `}
-      style={{
-        cursor: isDragging ? 'grabbing' : 'pointer'
-      }}
+      style={{ cursor: isDragging ? 'grabbing' : 'pointer' }}
+      role="article"
+      aria-labelledby={`${cardId}-title`}
+      aria-describedby={`${cardId}-description`}
+      tabIndex={0}
     >
-      {/* Top gradient line - appears on hover */}
+      {/* Top gradient line */}
       <motion.div 
         className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[var(--color-primary-500)] to-transparent"
         initial={{ opacity: 0 }}
         animate={{ opacity: isHovered ? 1 : 0 }}
         transition={{ duration: 0.2 }}
+        aria-hidden="true"
       />
 
-      {/* Drag Handle - always visible when hovering */}
+      {/* Drag Handle */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: isHovered ? 1 : 0 }}
         className="absolute left-1 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing"
         onMouseDown={(e) => e.stopPropagation()}
+        aria-hidden="true"
       >
         <GripVertical size={16} className="text-[var(--color-outline)] hover:text-[var(--color-primary)] transition-colors" />
       </motion.div>
 
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className={`p-1.5 rounded-md type-${task.type}`}>
-            <TypeIcon size={14} />
+          <span className={`p-1.5 rounded-md type-${task.type}`} aria-hidden="true">
+            <TypeIconComponent type={task.type} />
           </span>
           <span className={`text-xs px-2 py-0.5 rounded-full type-${task.type}`}>
             {TASK_TYPE_LABELS[task.type]}
@@ -190,16 +255,27 @@ export default function TaskCard({ task, onEdit, compact = false, isDragging = f
         </div>
 
         <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${priorityColors[task.priority]}`} title={PRIORITY_LABELS[task.priority]} />
+          {/* Priority indicator with text for accessibility */}
+          <div 
+            className={`w-2 h-2 rounded-full ${priorityColors[task.priority]}`} 
+            title={PRIORITY_LABELS[task.priority]}
+            role="img"
+            aria-label={`Priority: ${PRIORITY_LABELS[task.priority]}`}
+          />
+          
+          {/* More actions menu */}
           <div className="relative">
             <motion.button
+              ref={menuButtonRef}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsMenuOpen(!isMenuOpen);
-              }}
+              onClick={toggleMenu}
+              onKeyDown={handleMenuKeyDown}
               className="p-1 rounded hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100"
+              aria-label="More actions"
+              aria-expanded={isMenuOpen}
+              aria-haspopup="menu"
+              aria-controls={menuId}
             >
               <MoreHorizontal size={16} className="text-[var(--color-text-muted)]" />
             </motion.button>
@@ -207,20 +283,24 @@ export default function TaskCard({ task, onEdit, compact = false, isDragging = f
             <AnimatePresence>
               {isMenuOpen && (
                 <motion.div
+                  id={menuId}
                   initial={{ opacity: 0, scale: 0.95, y: -5 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -5 }}
                   transition={{ duration: 0.15 }}
                   className="absolute right-0 top-full mt-1 w-36 py-1 glass-heavy z-20"
                   onClick={(e) => e.stopPropagation()}
+                  role="menu"
+                  aria-label="Task actions"
                 >
                   {task.status === 'pending' && (
                     <motion.button
                       whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.1)' }}
                       onClick={handleTake}
                       className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 text-[var(--color-primary-400)]"
+                      role="menuitem"
                     >
-                      <CheckCircle size={14} />
+                      <CheckCircle size={14} aria-hidden="true" />
                       领取任务
                     </motion.button>
                   )}
@@ -228,8 +308,9 @@ export default function TaskCard({ task, onEdit, compact = false, isDragging = f
                     whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.1)' }}
                     onClick={handleDelete}
                     className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 text-[var(--color-error)]"
+                    role="menuitem"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={14} aria-hidden="true" />
                     删除
                   </motion.button>
                 </motion.div>
@@ -239,14 +320,20 @@ export default function TaskCard({ task, onEdit, compact = false, isDragging = f
         </div>
       </div>
 
-      {/* Task Title */}
-      <h3 className="font-medium text-[var(--color-on-surface)] mb-2 group-hover:text-[var(--color-primary)] transition-colors">
+      {/* Task Title - linked to card via aria-labelledby */}
+      <h3 
+        id={`${cardId}-title`}
+        className="font-medium text-[var(--color-on-surface)] mb-2 group-hover:text-[var(--color-primary)] transition-colors"
+      >
         {task.title}
       </h3>
 
       {/* Task Description Preview */}
       {task.description && (
-        <p className="text-sm text-[var(--color-on-surface-variant)] mb-3 line-clamp-2">
+        <p 
+          id={`${cardId}-description`}
+          className="text-sm text-[var(--color-on-surface-variant)] mb-3 line-clamp-2"
+        >
           {task.description}
         </p>
       )}
@@ -255,21 +342,21 @@ export default function TaskCard({ task, onEdit, compact = false, isDragging = f
       <div className="flex items-center justify-between text-xs text-[var(--color-on-surface-variant)]">
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1">
-            <Clock size={12} />
-            {formatDate(task.createdAt)}
+            <Clock size={12} aria-hidden="true" />
+            <span>{formatDate(task.createdAt)}</span>
           </span>
           {duration && (
             <span className="flex items-center gap-1 text-[var(--color-secondary)]">
-              <CheckCircle size={12} />
-              {duration}
+              <CheckCircle size={12} aria-hidden="true" />
+              <span>{duration}</span>
             </span>
           )}
         </div>
 
-        {/* Creator info instead of assignee */}
+        {/* Creator info */}
         <span className="flex items-center gap-1">
-          <User size={12} />
-          {task.createdBy.split(' ')[0]}
+          <User size={12} aria-hidden="true" />
+          <span>{task.createdBy.split(' ')[0]}</span>
         </span>
       </div>
 
@@ -286,13 +373,17 @@ export default function TaskCard({ task, onEdit, compact = false, isDragging = f
           boxShadow: [
             '0 0 0 rgba(var(--color-primary), 0)',
             '0 0 8px rgba(var(--color-primary), 0.3)',
-            '0 0 0 rgba(var(--color-primary), 0)'
-          ]
+            '0 0 0 rgba(var(--color-primary), 0)',
+          ],
         } : {}}
         transition={{ duration: 2, repeat: Infinity }}
+        role="status"
+        aria-label={`Status: ${STATUS_LABELS[task.status]}`}
       >
         {STATUS_LABELS[task.status]}
       </motion.div>
     </motion.div>
   );
 }
+
+export default memo(TaskCard);
