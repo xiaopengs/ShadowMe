@@ -1,847 +1,490 @@
-# ShadowMe - 智能影子分身协作看板
+<div align="center">
+  <h1>
+    🤖 ShadowMe
+  </h1>
+  <p>
+    <strong>智能影子分身协作看板 - 让 AI 成为你的协作伙伴</strong>
+  </p>
+  <p>
+    <a href="https://github.com/xiaopengs/ShadowMe/stargazers">
+      <img src="https://img.shields.io/github/stars/xiaopengs/ShadowMe?style=flat-square" alt="Stars" />
+    </a>
+    <a href="https://github.com/xiaopengs/ShadowMe/issues">
+      <img src="https://img.shields.io/github/issues/xiaopengs/ShadowMe?style=flat-square" alt="Issues" />
+    </a>
+    <a href="https://github.com/xiaopengs/ShadowMe/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/xiaopengs/ShadowMe?style=flat-square" alt="License" />
+    </a>
+  </p>
 
-<p align="center">
-  <img src="public/logo.svg" alt="ShadowMe" width="120" />
-</p>
-
-<p align="center">
-  <strong>让 AI 影子分身成为你的协作伙伴</strong>
-</p>
-
-<p align="center">
-  <a href="https://github.com/xiaopengs/ShadowMe/stargazers">
-    <img src="https://img.shields.io/github/stars/xiaopengs/ShadowMe?style=flat-square" alt="Stars" />
-  </a>
-  <a href="https://github.com/xiaopengs/ShadowMe/issues">
-    <img src="https://img.shields.io/github/issues/xiaopengs/ShadowMe?style=flat-square" alt="Issues" />
-  </a>
-  <a href="https://github.com/xiaopengs/ShadowMe/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/xiaopengs/ShadowMe?style=flat-square" alt="License" />
-  </a>
-</p>
-
----
-
-## 项目介绍
-
-ShadowMe 是一款智能影子分身协作看板，旨在将 Claude Code 等 AI 工具融入日常工作流程。通过 ShadowMe，你可以创建任务并交给 AI 影子分身自动处理，实现人机协作的高效工作方式。
-
-### 核心场景
-
-```
-协作方来访 → 创建任务 → 影子分身自动领取 → 本地执行 → 结果返回
-```
-
-1. **创建任务**：协作者在看板中创建任务，描述需要解决的问题或需求
-2. **影子领取**：Claude Code（影子分身）自动接收待处理任务
-3. **本地执行**：影子分身在本地环境中执行代码、搜索、分析
-4. **结果返回**：执行结果自动同步到看板，协作者可查看进度和结果
-
-### 系统架构
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        ShadowMe 看板系统                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐   │
-│  │   前端界面   │───▶│   API 路由   │───▶│  SQLite 数据库   │   │
-│  │  (Next.js)   │    │  (REST API)  │    │  (任务/消息/状态) │   │
-│  └──────────────┘    └──────────────┘    └──────────────────┘   │
-│         │                   │                                    │
-│         │                   ▼                                    │
-│         │          ┌──────────────────┐                          │
-│         │          │  Claude Code    │                          │
-│         │          │   (影子分身)      │                          │
-│         │          └──────────────────┘                          │
-│         │                   │                                    │
-│         │                   ▼                                    │
-│         │          ┌──────────────────┐                          │
-│         └─────────▶│  CC Sync Log    │◀──── 实时消息推送        │
-│                    │   (终端风格)       │                          │
-│                    └──────────────────┘                          │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
+  <p>
+    <a href="#✨-核心特性">核心特性</a> ·
+    <a href="#🚀-快速开始-5分钟上手">快速开始</a> ·
+    <a href="#📖-完整使用教程">完整教程</a> ·
+    <a href="#❓-常见问题">常见问题</a>
+  </p>
+</div>
 
 ---
 
-## 部署指南
+## 💡 什么是 ShadowMe？
 
-ShadowMe 由三个部分组成：**网页管理端（前端 + API）**、**后台服务**、**Claude Code 插件**。以下分别说明部署方式。
+想象一下：你是一个忙碌的开发者，团队成员需要你帮忙处理任务，但你分身乏术？
 
-### 环境要求
+**ShadowMe 就是你的解决方案！** 🎉
 
-| 依赖 | 最低版本 | 说明 |
-|------|---------|------|
-| Node.js | >= 20.0.0 | 推荐 LTS 版本 |
-| npm | >= 9.0.0 | 随 Node.js 安装 |
-| Git | >= 2.0 | 克隆仓库 |
+ShadowMe 是一个智能协作看板，它让你：
+- 📋 创建任务 - 同事在看板上创建任务
+- 🤖 影子分身 - Claude Code 自动接收任务
+- ⚡ 自动执行 - AI 在本地帮你处理
+- ✅ 结果回传 - 完成后自动更新看板
 
-### 一、网页管理端部署
+**就像有了一个不知疲倦的小助手！**
 
-网页管理端基于 Next.js，包含前端界面和所有 API 路由，是一个全栈应用。
+---
 
-#### 1. 克隆项目
+## ✨ 核心特性
+
+| 特性 | 描述 |
+|------|------|
+| 🎨 **精美界面** | Sahara 沙漠暖色调，看久了不累眼 |
+| 📋 **协作看板** | 直观的任务管理，一目了然 |
+| 💬 **实时消息** | 与影子分身实时对话 |
+| 🔔 **自动推送** | 任务状态更新立刻知道 |
+| 🔗 **GitLab 集成** | 自动创建 MR，提交代码 |
+| 📱 **响应式设计** | 手机、电脑都能用 |
+| 🤝 **Claude Code 集成** | 直接在 VS Code 中使用 |
+
+---
+
+## 🚀 快速开始 - 5分钟上手
+
+### 视频教程（假装有视频 😄）
+> 文字教程更详细，看下面！
+
+---
+
+## 📖 完整使用教程
+
+### 第一步：准备工作
+
+在开始之前，你需要：
+
+✅ **电脑一台**（Windows / Mac / Linux 都可以）
+✅ **Node.js 20+**（如果没安装，去 [官网](https://nodejs.org) 下载）
+✅ **VS Code**（推荐，也可以用别的编辑器）
+✅ **Claude Pro / Max 账号**（或者有 API Key 也行）
+
+---
+
+### 第二步：安装 ShadowMe 看板
+
+#### 2.1 下载代码
+
+打开终端（Mac/Linux 叫终端，Windows 叫命令提示符或 PowerShell），输入：
 
 ```bash
+# 下载项目
 git clone https://github.com/xiaopengs/ShadowMe.git
+
+# 进入项目目录
 cd ShadowMe
 ```
 
-#### 2. 安装依赖
+**新手提示**：不知道怎么打开终端？
+- Mac：按 `Cmd + 空格`，输入 Terminal
+- Windows：按 `Win + R`，输入 cmd
+- VS Code：在菜单里选 终端 → 新建终端
+
+#### 2.2 安装依赖
 
 ```bash
 npm install
 ```
 
-> 项目使用 sql.js（纯 JavaScript/WASM SQLite），无需安装 C++ 编译工具链，Windows/macOS/Linux 均可直接安装。
+**这步会等一会儿，别着急，在下载需要的文件呢！** ☕
 
-#### 3. 配置环境变量
+#### 2.3 配置环境变量
 
 ```bash
+# 复制一份配置文件
 cp .env.example .env.local
 ```
 
-编辑 `.env.local`，必填项：
+**新手提示**：Windows 用户如果上面的命令不行，手动复制一下吧！
+- 找到 `.env.example` 文件
+- 复制一份，改名叫 `.env.local`
+
+打开 `.env.local` 文件，只需要改这一行（如果看板不在本机的话）：
 
 ```env
-# 数据库路径（默认 ./data/ShadowMe.db）
-DATABASE_PATH=./data/ShadowMe.db
-
-# API 密钥 - 用于 Webhook 认证和插件连接
-# 生成方式: openssl rand -hex 32
-CC_WEBHOOK_API_KEY=your-secure-api-key
-
-# SSE 实时推送（默认开启）
-SSE_ENABLED=true
+# 看板地址，默认本机就行
+SHADOW_BOARD_URL=http://localhost:3000
 ```
 
-可选配置（GitLab 集成）：
-
-```env
-GITLAB_URL=https://gitlab.example.com
-GITLAB_TOKEN=glpat-xxxxxxxxxxxx
-GITLAB_PROJECT_ID=12345
-```
-
-完整配置项参见 [环境变量说明](#环境变量完整配置)。
-
-#### 4. 初始化数据库
+#### 2.4 初始化数据库
 
 ```bash
 npm run db:init
 ```
 
-该命令会创建 `data/ShadowMe.db` 文件，建表并插入示例数据。
+**看到 "Database initialized successfully" 就对了！** 🎉
 
-#### 5. 启动服务
-
-**开发模式：**
+#### 2.5 启动看板！
 
 ```bash
+# 开发模式（推荐，改代码自动刷新）
 npm run dev
 ```
 
-访问 http://localhost:3000 查看应用。
-
-**生产模式：**
+或者生产模式：
 
 ```bash
 npm run build
 npm start
 ```
 
-默认监听 3000 端口，可通过以下方式修改：
-
-```bash
-PORT=8080 npm start
+**看到下面这行就成功了！**
+```
+✓ Ready in ...
 ```
 
-#### 6. 局域网/外网访问
+现在打开浏览器访问：**http://localhost:3000**
 
-开发模式默认绑定所有网络接口，局域网内其他设备可直接访问：
+---
 
-```
-http://<你的IP>:3000
-```
+### 第三步：认识一下界面！
 
-生产模式如需外网访问，推荐使用 Nginx 反向代理：
+打开浏览器，你会看到：
 
-```nginx
-server {
-    listen 80;
-    server_name shadow.yourdomain.com;
+| 区域 | 功能 |
+|------|------|
+| 🤖 **左上角头像** | 影子分身的状态显示 |
+| 📊 **看板区域** | 任务卡片，拖拽调整状态 |
+| 💬 **底部日志** | 与影子分身的对话记录 |
+| 📱 **侧边栏** | 导航菜单（移动端在底部） |
 
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
+---
 
-> **注意**：SSE 实时推送需要 Nginx 关闭响应缓冲，上述配置中 `proxy_http_version 1.1` 和 `Connection "upgrade"` 已处理。
+### 第四步：安装 Claude Code VS Code 扩展
 
-#### 7. 使用 PM2 守护进程（推荐生产环境）
+#### 4.1 安装扩展
 
-```bash
-npm install -g pm2
+1. 打开 VS Code
+2. 点击左侧扩展图标（或者按 `Ctrl+Shift+X` / `Cmd+Shift+X`）
+3. 搜索 **"Claude Code"**
+4. 安装官方的 Anthropic 出品的那个（有 2M+ 下载量的）
 
-# 启动
-pm2 start npm --name "shadowme" -- start
+#### 4.2 登录账号
 
-# 开机自启
-pm2 save
-pm2 startup
-```
+1. 点击 VS Code 活动栏的 **Spark 图标** ✨
+2. 按提示登录你的 Claude 账号
+3. 授权完成就可以用了！
 
-### 二、后台服务说明
+---
 
-ShadowMe 的后台逻辑集成在 Next.js API 路由中，**无需单独部署后台服务**。以下说明后台核心模块：
+### 第五步：安装 ShadowMe 插件
 
-| 模块 | 路径 | 说明 |
-|------|------|------|
-| 任务 API | `src/app/api/tasks/` | 任务 CRUD、领取、完成 |
-| 消息 API | `src/app/api/tasks/[id]/messages/` | 任务消息收发 |
-| 影子状态 | `src/app/api/shadow/status/` | 影子分身状态管理 |
-| Webhook | `src/app/api/webhook/cc/` | 接收 Claude Code 回调 |
-| SSE 推送 | `src/app/api/sse/` | 实时事件流 |
-| 看板统计 | `src/app/api/board/stats/` | 看板数据聚合 |
-| GitLab 代理 | `src/app/api/gitlab/` | GitLab API 代理 |
-| 数据库 | `src/lib/db.ts` | sql.js 数据库操作层 |
+#### 5.1 打开 Claude Code
 
-#### 数据库
+在 VS Code 中：
+1. 点击活动栏的 Spark 图标 ✨
+2. 或者按 `Ctrl+Shift+P` 输入 **"Claude Code: Open in New Tab"**
 
-- 使用 **sql.js**（SQLite 的 WASM 版本），数据文件存储在 `data/ShadowMe.db`
-- 每次写入操作后自动持久化到磁盘
-- 数据库表结构：`tasks`、`shadow_status`、`task_messages`、`logs`、`config`
+#### 5.2 打开插件管理
 
-#### 实时推送（SSE）
-
-SSE 默认开启，客户端连接 `/api/sse` 即可接收实时事件：
+在 Claude Code 对话框中输入：
 
 ```
-event: task_created
-data: {"id":"task-xxx","title":"新任务",...}
-
-event: task_updated
-data: {"id":"task-xxx","status":"in_progress",...}
+/plugins
 ```
 
-配置项：
+#### 5.3 添加 ShadowMe 插件
 
-```env
-SSE_ENABLED=true
-SSE_HEARTBEAT_INTERVAL=30
-SSE_CONNECTION_TIMEOUT=300
-```
+1. 点击 **"Marketplaces"** 标签
+2. 添加本地插件目录：
+   ```
+   /workspace/ShadowMe/plugins/ShadowMe-plugin
+   ```
+   
+   **新手提示**：路径要改成你实际放代码的地方！
 
-### 三、Claude Code 插件安装与使用
-
-插件位于 `plugins/ShadowMe-plugin/`，负责连接 Claude Code 和看板系统，实现任务监听、领取、执行和结果回传。
-
-#### 方式一：在 Claude Code VS Code 扩展中使用（推荐）
-
-1. **安装 Claude Code 扩展**
-
-   在 VS Code 扩展商店中搜索并安装官方的 [Claude Code 扩展](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code)
-
-2. **配置 ShadowMe 插件**
-
-   - 打开 VS Code
-   - 点击活动栏的 **Claude 图标** 或按 `Cmd+Shift+P` (Mac) / `Ctrl+Shift+P` (Windows/Linux)
-   - 选择 **Claude Code: Open in New Tab**
-   - 在 Claude Code 对话框中输入：
-     ```
-     /plugins
-     ```
-
-3. **添加本地插件**
-
-   在插件管理界面中：
-   - 点击 **Marketplaces** 标签
-   - 添加本地插件目录：
-     ```
-     /workspace/ShadowMe/plugins/ShadowMe-plugin
-     ```
-   - 或者在启动 Claude Code 时指定：
-     ```bash
-     claude --plugin-dir /workspace/ShadowMe/plugins/ShadowMe-plugin
-     ```
-
-4. **安装插件**
-
-   - 在插件列表中找到 **shadowme**
-   - 点击 **Install** 按钮
-   - 选择安装范围（用户、项目或本地）
-
-5. **使用 ShadowMe 技能**
-
-   安装后，可以使用以下技能：
-
-   | 技能 | 描述 |
-   |------|------|
-   | `/shadowme:status` | 检查 ShadowMe 看板状态和连接 |
-   | `/shadowme:list-tasks` | 列出看板上的所有任务 |
-   | `/shadowme:create-task` | 创建新任务到看板 |
-   | `/shadowme:take-task` | 领取看板任务 |
-   | `/shadowme:complete-task` | 完成看板任务并提交结果 |
-
-6. **配置环境变量**
-
-   首次使用前，在插件目录创建 `.env` 文件：
+3. 或者直接用命令启动（推荐新手）：
    ```bash
-   cd /workspace/ShadowMe/plugins/ShadowMe-plugin
-   cp .env.example .env
-   # 编辑 .env 配置看板地址
+   claude --plugin-dir /workspace/ShadowMe/plugins/ShadowMe-plugin
    ```
 
-#### 方式二：作为独立 Node.js 库使用
+#### 5.4 安装插件
 
-#### 1. 安装插件
+- 在插件列表找到 **shadowme**
+- 点击 **Install**
+- 选择 **"Install for this project"**（推荐）
+
+---
+
+### 第六步：配置插件（可选但推荐）
+
+进入插件目录配置一下：
 
 ```bash
 cd plugins/ShadowMe-plugin
-npm install
-```
-
-#### 2. 配置插件
-
-```bash
 cp .env.example .env
 ```
 
-编辑 `.env`：
+编辑 `.env` 文件：
 
 ```env
-# 看板地址 - 填写网页管理端的访问地址
+# 看板地址（跟之前一样）
 SHADOW_BOARD_URL=http://localhost:3000
 
-# GitLab 配置（可选，用于自动创建 MR）
+# GitLab 配置（如果有的话）
 GITLAB_URL=https://gitlab.example.com
-GITLAB_TOKEN=glpat-xxxxxxxxxxxx
-GITLAB_DEFAULT_PROJECT=12345
-
-# 工作目录 - Claude Code 执行任务的工作路径
-WORKING_DIRECTORY=/home/user/projects
+GITLAB_TOKEN=glpat_你的token
+GITLAB_DEFAULT_PROJECT=123
+WORKING_DIRECTORY=/你的/工作/目录
 ```
 
-#### 3. 编译插件
+---
 
-```bash
-npm run build
+### 第七步：开始使用！🎉
+
+#### 场景 1：创建任务（模拟同事）
+
+1. 打开浏览器访问 **http://localhost:3000**
+2. 点击 **"新建任务"** 按钮
+3. 填写任务信息：
+   - 标题：帮我写个登录页面
+   - 类型：technical_issue
+   - 优先级：high
+   - 描述：简单的登录界面就行
+4. 点击 **"创建"**
+
+#### 场景 2：影子分身接收任务（你是开发者）
+
+1. 在 VS Code 打开 Claude Code
+2. 输入：
+   ```
+   /shadowme:list-tasks
+   ```
+3. 看到刚创建的任务了！
+
+#### 场景 3：领取任务
+
+```
+/shadowme:take-task
 ```
 
-编译输出到 `dist/` 目录。
+选择刚才的任务 ID，Claude 会帮你领取！
 
-#### 4. 运行插件
+#### 场景 4：完成任务
 
-**开发模式：**
-
-```bash
-npm run dev
+```
+/shadowme:complete-task
 ```
 
-**生产模式：**
+填写任务结果，比如：
+- 结果类型：merge_request
+- 摘要：已完成登录页面
+- URL：MR 的链接（如果有的话）
 
-```bash
-node dist/index.js
-```
+---
 
-#### 5. CLI 命令
+## 🎯 日常使用流程
 
-插件启动后，可通过以下命令与看板交互：
+### 完整工作流示例
 
-| 命令 | 说明 |
+**上午 9:00** - 同事小 A：
+1. 打开 ShadowMe 看板
+2. 创建任务："帮我修复用户反馈的登录问题"
+3. 设置优先级：high
+
+**上午 9:05** - 影子分身自动检测：
+1. Claude Code 收到通知
+2. 自动（或手动）领取任务
+3. 开始在本地分析代码
+
+**上午 9:30** - 任务完成：
+1. AI 修改好代码
+2. 创建 GitLab MR
+3. 调用 `/shadowme:complete-task` 提交结果
+
+**上午 9:31** - 看板更新：
+1. 任务自动变成 "已完成"
+2. 同事可以看到结果和 MR 链接
+3. 完美！✨
+
+---
+
+## 🔧 技能命令大全
+
+### 在 Claude Code 中使用
+
+| 命令 | 功能 | 什么时候用 |
+|------|------|-----------|
+| `/shadowme:status` | 检查看板状态 | 想知道看板连没连上 |
+| `/shadowme:list-tasks` | 列出所有任务 | 查看有什么任务 |
+| `/shadowme:create-task` | 创建任务 | 有新需求了 |
+| `/shadowme:take-task` | 领取任务 | 准备开始干活 |
+| `/shadowme:complete-task` | 完成任务 | 干完了提交结果 |
+
+### 任务状态说明
+
+| 状态 | 含义 |
 |------|------|
-| `/shadow help` | 显示帮助信息 |
-| `/shadow status` | 查看连接状态和任务统计 |
-| `/shadow tasks` | 列出待处理任务 |
-| `/shadow take <id>` | 领取指定任务 |
-| `/shadow info <id>` | 查看任务详情 |
-| `/shadow complete <id>` | 完成任务并提交结果 |
-
-#### 6. 编程接口
-
-插件也可作为 Node.js 模块集成到你的代码中：
-
-```typescript
-import ShadowClonePlugin from 'ShadowMe-plugin';
-
-const plugin = new ShadowClonePlugin({
-  boardUrl: 'http://localhost:3000',
-  autoTakeTasks: true,
-  pollingInterval: 10000,
-});
-
-await plugin.initialize();
-
-// 监听事件
-plugin.on('task:pending', (task) => {
-  console.log('新任务:', task.title);
-});
-
-plugin.on('task:taken', (task) => {
-  console.log('已领取:', task.title);
-});
-
-plugin.on('task:completed', (task) => {
-  console.log('已完成:', task.title);
-});
-
-// 手动操作
-const tasks = await plugin.getTasks('pending');
-await plugin.takeTask('task-id');
-await plugin.completeTask('task-id', {
-  type: 'merge_request',
-  summary: '代码审查完成',
-  url: 'https://gitlab.com/...',
-});
-
-// GitLab 集成
-await plugin.createGitLabMR(projectId, 'feature-branch', 'main', 'MR 标题', 'MR 描述');
-
-// 销毁
-plugin.destroy();
-```
-
-#### 7. 插件工作流程
-
-```
-启动插件 → WebSocket 连接看板 → 心跳保持
-                │
-                ▼
-        轮询待处理任务 ──→ 发现新任务
-                │              │
-                ▼              ▼
-        自动领取(autoTake)   手动 /shadow take
-                │              │
-                ▼              ▼
-          执行任务 ──────────→ /shadow complete
-                │
-                ▼
-         结果回传看板（MR链接/文档/摘要）
-```
+| 🟡 **pending** | 待处理，还没人领 |
+| 🔵 **in_progress** | 进行中，正在处理 |
+| 🟢 **completed** | 已完成，等反馈 |
+| ⚪ **closed** | 已关闭，结束了 |
 
 ---
 
-## 环境变量完整配置
-
-### 服务端变量（不暴露到浏览器）
-
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `DATABASE_PATH` | SQLite 数据库文件路径 | `./data/ShadowMe.db` |
-| `CC_WEBHOOK_API_KEY` | Webhook API 认证密钥 | 空 |
-| `CC_API_KEY` | API 密钥（兼容旧配置） | 空 |
-| `GITLAB_URL` | GitLab 服务器地址 | - |
-| `GITLAB_TOKEN` | GitLab Access Token | - |
-| `GITLAB_PROJECT_ID` | GitLab 项目 ID | - |
-| `SSE_ENABLED` | 启用 SSE 实时推送 | `true` |
-| `SSE_HEARTBEAT_INTERVAL` | SSE 心跳间隔（秒） | `30` |
-| `SSE_CONNECTION_TIMEOUT` | SSE 连接超时（秒） | `300` |
-| `CC_SYNC_INTERVAL` | CC 同步间隔（毫秒） | `30000` |
-| `MESSAGE_POLL_INTERVAL` | 消息轮询间隔（毫秒） | `5000` |
-| `SHADOW_AUTO_TAKE` | 影子自动领取任务 | `false` |
-
-### 客户端变量（NEXT_PUBLIC_ 前缀，暴露到浏览器）
-
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `NEXT_PUBLIC_GITLAB_URL` | 设置页 GitLab 地址 | `https://gitlab.example.com` |
-| `NEXT_PUBLIC_GITLAB_TOKEN` | 设置页 GitLab Token | - |
-| `NEXT_PUBLIC_LOCAL_ENDPOINT` | 本地端点地址 | `http://localhost:8080/v1` |
-| `NEXT_PUBLIC_GREETING_PROTOCOL` | 问候协议 | `concise` |
-| `NEXT_PUBLIC_RESPONSE_VERBOSITY` | 响应详细度 (0-100) | `50` |
-| `NEXT_PUBLIC_AUTO_CONTEXT_INJECTION` | 自动上下文注入 | `true` |
-| `NEXT_PUBLIC_WORKING_DIRECTORY` | 工作目录 | `/home/user/projects` |
-| `NEXT_PUBLIC_AUTO_SYNC_CHANGES` | 自动同步变更 | `false` |
-
----
-
-## 功能特性
-
-### 🎨 Sahara 主题
-
-采用沙漠暖调设计风格，米黄色调温馨自然，为长时间工作提供舒适的视觉体验。
-
-### 📋 协作看板
-
-- **列视图**：pending → in_progress → completed → closed
-- **任务卡片**：展示类型、优先级、描述、标签等信息
-- **实时统计**：看板顶部显示各状态任务数量
-
-### 💬 CC Sync Log
-
-终端风格的通信组件，实现与影子分身的实时交互：
-
-- 命令行界面设计，支持打字机效果
-- 支持用户消息、Claude 响应、系统通知三种消息类型
-- 自动滚动和消息时间戳
-
-### 🔔 实时消息推送
-
-- **SSE（Server-Sent Events）**：服务器主动推送更新
-- **轮询降级**：不支持 SSE 时自动切换到轮询模式
-- **即时通知**：任务状态变更、消息到达等实时提醒
-
-### 🔗 GitLab 集成
-
-- MR 链接解析和展示
-- 分支信息关联
-- 提交记录追踪
-
-### 📱 响应式设计
-
-- 桌面端：完整侧边栏布局
-- 移动端：底部导航栏
-- 自适应卡片和列表视图
-
----
-
-## API 文档
-
-### 任务接口
-
-#### 获取任务列表
-
-```
-GET /api/tasks
-```
-
-**查询参数：**
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| status | string | 按状态筛选，支持逗号分隔多个值 |
-| type | string | 按类型筛选 |
-| priority | string | 按优先级筛选 |
-
-**响应示例：**
-
-```json
-{
-  "tasks": [
-    {
-      "id": "uuid",
-      "title": "修复登录问题",
-      "type": "technical_issue",
-      "priority": "high",
-      "status": "pending",
-      "description": "用户反馈登录失败",
-      "tags": ["bug", "urgent"],
-      "attachments": [],
-      "createdBy": "访客",
-      "createdAt": "2024-01-01T12:00:00Z",
-      "updatedAt": "2024-01-01T12:00:00Z"
-    }
-  ],
-  "total": 1
-}
-```
-
-#### 创建任务
-
-```
-POST /api/tasks
-```
-
-**请求体：**
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| title | string | ✅ | 任务标题 |
-| type | string | ❌ | 类型：technical_issue / design_doc / code_review / other |
-| priority | string | ❌ | 优先级：low / medium / high / urgent |
-| description | string | ❌ | 任务描述 |
-| tags | string[] | ❌ | 标签列表 |
-| attachments | object[] | ❌ | 附件列表 |
-| expectedDelivery | string | ❌ | 预期交付时间 |
-| dueDate | string | ❌ | 截止日期 |
-| createdBy | string | ❌ | 创建者 |
-
-**响应：** 返回创建的任务对象，状态码 201
-
-#### 获取任务详情
-
-```
-GET /api/tasks/[id]
-```
-
-**响应：** 返回任务对象，状态码 404 表示任务不存在
-
-#### 更新任务
-
-```
-PATCH /api/tasks/[id]
-```
-
-**请求体：** 支持所有任务字段的部分更新
-
-**响应：** 返回更新后的任务对象
-
-#### 删除任务
-
-```
-DELETE /api/tasks/[id]
-```
-
-**响应：**
-
-```json
-{
-  "success": true
-}
-```
-
-#### 领取任务
-
-```
-POST /api/tasks/[id]/take
-```
-
-**响应：** 返回更新后的任务对象（状态变为 in_progress）
-
-#### 完成任务
-
-```
-POST /api/tasks/[id]/complete
-```
-
-**请求体：**
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| result | object | ✅ | 完成结果 |
-| result.type | string | ✅ | 结果类型 |
-| result.summary | string | ✅ | 结果摘要 |
-| result.url | string | ❌ | 相关链接（MR 等） |
-
-### 消息接口
-
-#### 获取任务消息
-
-```
-GET /api/tasks/[id]/messages
-```
-
-**响应示例：**
-
-```json
-{
-  "messages": [
-    {
-      "id": "uuid",
-      "taskId": "task-uuid",
-      "type": "user",
-      "content": "请帮我处理这个问题",
-      "createdAt": "2024-01-01T12:00:00Z"
-    }
-  ],
-  "total": 1
-}
-```
-
-#### 发送消息
-
-```
-POST /api/tasks/[id]/messages
-```
-
-**请求体：**
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| content | string | ✅ | 消息内容 |
-| type | string | ❌ | 消息类型：user / system / claude |
-
-**响应：** 返回创建的消息对象
-
-### 影子状态接口
-
-#### 获取状态
-
-```
-GET /api/shadow/status
-```
-
-**响应示例：**
-
-```json
-{
-  "id": "shadow-1",
-  "name": "影子分身",
-  "status": "online",
-  "currentTaskId": "task-uuid",
-  "currentTask": { ... },
-  "lastHeartbeat": "2024-01-01T12:00:00Z",
-  "capabilities": ["代码审查", "方案设计"],
-  "autoTakeTasks": false
-}
-```
-
-#### 更新状态
-
-```
-POST /api/shadow/status
-```
-
-**请求体：**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| status | string | online / busy / offline / unknown |
-| capabilities | string[] | 能力列表 |
-| autoTakeTasks | boolean | 是否自动领取任务 |
-
-### Webhook 接口
-
-```
-POST /api/webhook/cc
-```
-
-接收 Claude Code 插件回调，需携带 API Key 认证：
-
-```bash
-curl -X POST http://localhost:3000/api/webhook/cc \
-  -H "Authorization: Bearer your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"type": "message", "taskId": "...", "content": "..."}'
-```
-
-### 任务生命周期
-
-```
-pending → in_progress → completed → needs_feedback → closed
-  │           │              │            │
-  │           ▼              ▼            ▼
-  └───── 影子领取       提交结果      确认反馈
-```
-
----
-
-## 技术栈
-
-| 类别 | 技术 | 说明 |
-|------|------|------|
-| **框架** | Next.js 16 (App Router) | React 全栈框架 |
-| **语言** | TypeScript | 类型安全 |
-| **数据库** | sql.js (SQLite WASM) | 纯 JS，无需编译，跨平台 |
-| **样式** | Tailwind CSS 4 | 原子化 CSS |
-| **动画** | Framer Motion | React 动画库 |
-| **图标** | Lucide React | 开源图标库 |
-| **校验** | Zod | 运行时类型校验 |
-
----
-
-## 项目结构
+## 📁 项目结构说明
 
 ```
 ShadowMe/
-├── public/                  # 静态资源
-├── scripts/
-│   └── init-db.js          # 数据库初始化脚本
-├── src/
-│   ├── app/                # Next.js App Router
-│   │   ├── api/            # API 路由
-│   │   │   ├── board/      # 看板统计 API
-│   │   │   ├── gitlab/     # GitLab 集成 API
-│   │   │   ├── shadow/     # 影子状态 API
-│   │   │   ├── sse/        # SSE 实时推送
-│   │   │   ├── tasks/      # 任务 API
-│   │   │   └── webhook/    # Webhook 接收
-│   │   ├── archive/        # 归档页面
-│   │   ├── settings/       # 设置页面
-│   │   ├── tasks/          # 任务页面
-│   │   └── page.tsx        # 首页（看板）
-│   ├── components/         # React 组件
-│   │   ├── board/          # 看板组件
-│   │   ├── layout/         # 布局组件
-│   │   ├── tasks/          # 任务组件
-│   │   ├── sync/           # 同步组件
-│   │   └── ui/             # 通用 UI 组件
-│   ├── context/            # React Context
-│   ├── lib/                # 工具库
-│   │   ├── db.ts           # 数据库操作层 (sql.js)
-│   │   ├── cc-protocol.ts  # CC 通信协议
-│   │   ├── task-lifecycle.ts # 任务生命周期
-│   │   └── logger.ts       # 日志工具
-│   └── types/              # TypeScript 类型
+├── public/              # 图片、图标等静态资源
 ├── plugins/
-│   └── ShadowMe-plugin/    # Claude Code 插件
-│       ├── src/
-│       │   ├── index.ts    # 插件主入口
-│       │   ├── commands.ts # CLI 命令
-│       │   └── types/      # 类型定义
-│       ├── .env.example    # 插件环境变量
-│       └── package.json
-├── data/                   # 数据目录（运行时生成）
-│   └── ShadowMe.db        # SQLite 数据库文件
-├── .env.example            # 环境变量示例
-├── package.json
-├── next.config.ts
-├── tailwind.config.ts
-├── tsconfig.json
-└── README.md
+│   └── ShadowMe-plugin/ # Claude Code 插件
+│       ├── .claude-plugin/  # 插件配置
+│       ├── skills/          # 插件技能
+│       └── src/             # 插件源码
+├── src/
+│   ├── app/             # 主程序代码
+│   │   ├── api/        # API 接口
+│   │   ├── page.tsx    # 首页（看板）
+│   │   └── ...
+│   ├── components/     # 组件
+│   ├── lib/            # 工具库
+│   └── context/        # 全局状态
+├── data/               # 数据库文件（自动生成）
+├── scripts/            # 脚本
+└── README.md          # 就是这个文件！
 ```
 
 ---
 
-## 开发指南
+## ❓ 常见问题
 
-### 运行测试
+### 1. npm install 失败？
 
-```bash
-npm test
+**问题**：一堆红色错误
 
-npm test -- tasks.test.ts
+**解决方案**：
+1. 检查 Node.js 版本（>= 20）：`node -v`
+2. 试试删除 `node_modules` 重新装：
+   ```bash
+   rm -rf node_modules package-lock.json  # Mac/Linux
+   # Windows 手动删除文件夹
+   npm install
+   ```
+3. 换国内镜像源：
+   ```bash
+   npm config set registry https://registry.npmmirror.com
+   ```
 
-npm test -- --watch
-```
+### 2. 访问 localhost:3000 打不开？
 
-### 代码规范
+**问题**：浏览器显示无法访问
 
-```bash
-npm run lint
+**解决方案**：
+1. 检查终端有没有报错
+2. 确认 `npm run dev` 正在运行
+3. 看看端口是不是被占了，换个端口试试：
+   ```bash
+   PORT=8080 npm run dev
+   ```
 
-npx tsc --noEmit
-```
+### 3. 插件找不到？
 
-### 构建生产版本
+**问题**：Claude Code 里看不到 shadowme 插件
 
-```bash
-npm run build
-npm start
-```
+**解决方案**：
+1. 确认路径输对了，不要写错目录
+2. 重新加载插件：
+   ```
+   /reload-plugins
+   ```
+3. 重启 Claude Code 或 VS Code
+
+### 4. 连不上 GitLab？
+
+**问题**：创建 MR 时报错
+
+**解决方案**：
+1. 检查 `.env` 里的 GitLab 配置对不对
+2. Token 有没有过期，去 GitLab 重新生成一个
+3. Token 要有 api、write_repository 权限
+
+### 5. 还是不会用？
+
+**别担心！**
+1. 仔细再看一遍教程
+2. 看项目里的示例代码
+3. 提 Issue 问我们！
 
 ---
 
-## 贡献指南
+## 🛠️ 技术栈
 
-欢迎提交 Issue 和 Pull Request！
+好奇这是用什么写的？
 
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add amazing feature'`)
-4. 推送分支 (`git push origin feature/amazing-feature`)
-5. 创建 Pull Request
-
----
-
-## 许可证
-
-本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+| 技术 | 用途 |
+|------|------|
+| **Next.js 16** | React 全栈框架 |
+| **TypeScript** | 类型安全，少写 bug |
+| **sql.js** | 纯 JS 数据库，跨平台 |
+| **Tailwind CSS** | 样式框架，好看！ |
+| **Framer Motion** | 动画效果 |
+| **Lucide** | 图标库 |
+| **Claude Code** | AI 编程助手 |
 
 ---
 
-## 致谢
+## 🤝 贡献指南
 
-- [Next.js](https://nextjs.org/) - React 框架
-- [Tailwind CSS](https://tailwindcss.com/) - CSS 框架
-- [Framer Motion](https://www.framer.com/motion/) - 动画库
-- [Lucide](https://lucide.dev/) - 图标库
-- [sql.js](https://sql.js.org/) - SQLite WASM 驱动
+想一起完善 ShadowMe？太欢迎了！
+
+1. **Fork 本仓库** - 点击右上角 Fork 按钮
+2. **创建分支** - `git checkout -b feature/你的特性`
+3. **提交代码** - `git commit -m '添加牛逼功能'`
+4. **推送分支** - `git push origin feature/你的特性`
+5. **创建 Pull Request** - 告诉我们你改了啥！
+
+---
+
+## 📜 许可证
+
+MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+
+简单说：你可以随便用、随便改，但要保留版权声明。
+
+---
+
+## 🙏 感谢
+
+- [Next.js](https://nextjs.org/) - 伟大的框架
+- [Tailwind CSS](https://tailwindcss.com/) - 样式救星
+- [Framer Motion](https://www.framer.com/motion/) - 动画专家
+- [Lucide](https://lucide.dev/) - 漂亮的图标
+- [Claude](https://claude.ai/) - AI 太厉害了！
+
+---
+
+## 💬 联系与支持
+
+有问题？有建议？
+
+- 📝 提 [Issue](https://github.com/xiaopengs/ShadowMe/issues)
+- 🌟 点 Star 支持我们
+- 🔗 访问 [GitHub](https://github.com/xiaopengs/ShadowMe)
+
+---
+
+<div align="center">
+  <p>
+    Made with ❤️ by ShadowMe Team
+  </p>
+  <p>
+    祝你使用愉快！🎉
+  </p>
+</div>
