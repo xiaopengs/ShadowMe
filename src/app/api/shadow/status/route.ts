@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { get, run } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { broadcastToChannel } from '@/lib/sse-manager';
 import type { ShadowState, ShadowStatus } from '@/types';
 
 const apiLogger = logger.child({ module: 'api/shadow/status' });
@@ -18,7 +19,6 @@ export async function GET() {
         capabilities: [],
         autoTakeTasks: false
       };
-      apiLogger.info('Returning default shadow status');
       return NextResponse.json(defaultShadow);
     }
 
@@ -56,7 +56,8 @@ export async function GET() {
       }
     }
 
-    apiLogger.info('Shadow status fetched', {
+    // Use debug level instead of info to reduce log noise
+    apiLogger.debug('Shadow status fetched', {
       status: shadow.status,
       currentTaskId: shadow.currentTaskId
     });
@@ -97,18 +98,26 @@ export async function POST(request: Request) {
 
     const row = await get('SELECT * FROM shadow_status WHERE id = ?', ['shadow-1']) as any;
 
-    apiLogger.info('Shadow status updated', {
+    const shadowState: ShadowState = {
+      id: row.id,
+      name: row.name,
+      status: row.status as ShadowStatus,
+      currentTaskId: row.current_task_id,
+      lastHeartbeat: row.last_heartbeat,
+      capabilities: JSON.parse(row.capabilities || '[]'),
+      autoTakeTasks: Boolean(row.auto_take_tasks)
+    };
+
+    // Broadcast shadow status update via SSE so frontend can receive it in real-time
+    broadcastToChannel('shadow', 'shadow:status', shadowState);
+
+    // Use debug level to reduce log noise for frequent heartbeat calls
+    apiLogger.debug('Shadow status updated', {
       status: row.status,
       autoTakeTasks: autoTakeTasks
     });
-    return NextResponse.json({
-      id: row.id,
-      name: row.name,
-      status: row.status,
-      capabilities: JSON.parse(row.capabilities || '[]'),
-      autoTakeTasks: Boolean(row.auto_take_tasks),
-      lastHeartbeat: row.last_heartbeat
-    });
+
+    return NextResponse.json(shadowState);
   } catch (error) {
     apiLogger.error('Error updating shadow status', error, { operation: 'POST' });
     return NextResponse.json({ error: 'Failed to update shadow status' }, { status: 500 });

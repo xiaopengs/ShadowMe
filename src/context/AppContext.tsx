@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useCallback, type ReactNode } from 'react';
 import type { Task, ShadowState, Notification, Stats } from '@/types';
+import { useSSE } from '@/lib/use-sse';
 
 interface AppState {
   tasks: Task[];
@@ -175,6 +176,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'UPDATE_TASK', payload: updated });
   }, []);
 
+  // Use SSE for shadow status updates
+  const { isConnected } = useSSE({
+    enabled: true,
+    channels: ['shadow', 'stats', 'task'],
+    onMessage: useCallback((event: string, data: any) => {
+      if (event === 'shadow:status' || event === 'shadow:heartbeat') {
+        dispatch({ type: 'SET_SHADOW', payload: data });
+      }
+    }, [])
+  });
+
   useEffect(() => {
     fetchTasks();
 
@@ -186,12 +198,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
           dispatch({ type: 'SET_SHADOW', payload: data });
         }
       } catch {
-        console.log('Shadow status endpoint not available');
+        // Fail silently
       }
     };
 
+    // Initial fetch
     fetchShadowStatus();
-    const interval = setInterval(fetchShadowStatus, 30000);
+    
+    // Reduced polling frequency - only poll every 2 minutes (120,000ms) as a fallback for SSE
+    const interval = setInterval(fetchShadowStatus, 120000);
     return () => clearInterval(interval);
   }, []);
 

@@ -1,0 +1,83 @@
+# ShadowMe Task Execution Routine
+
+description: ShadowMe 影子分身任务执行流程 - 自动扫描看板、接取任务、执行任务、报告结果
+
+trigger:
+  type: schedule
+  cron: "*/5 * * * *"  # Every 5 minutes
+  # Or use file change triggers in Claude Code
+
+variables:
+  board_url: "${SHADOW_BOARD_URL:-http://localhost:3000}"
+  api_key: "${SHADOW_API_KEY:-}"
+  working_dir: "${WORKING_DIRECTORY:-.}"
+
+steps:
+  - name: Check for pending tasks
+    bash: |
+      curl -s "${board_url}/api/tasks?status=pending" \
+        -H "Accept: application/json" \
+        ${api_key:+-H "x-cc-api-key: $api_key"} | \
+        jq '.tasks[0] // empty'
+
+    on_success:
+      - name: Take task
+        bash: |
+          TASK_ID=$(jq -r '.id' <<< '$STEP_OUTPUT')
+          curl -s -X POST "${board_url}/api/tasks/${TASK_ID}/take" \
+            -H "Accept: application/json" \
+            ${api_key:+-H "x-cc-api-key: $api_key"}
+          
+          # Send task.assign message
+          curl -s -X POST "${board_url}/api/webhook/cc" \
+            -H "Content-Type: application/json" \
+            ${api_key:+-H "x-cc-api-key: $api_key"} \
+            -d '{
+              "type": "task.assign",
+              "taskId": "'${TASK_ID}'",
+              "taskTitle": "'$(jq -r '.title' <<< '$STEP_OUTPUT')'",
+              "timestamp": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'",
+              "messageId": "assign-'$(date +%s)'",
+              "senderId": "shadow-1"
+            }'
+        
+        on_success:
+          - name: Execute task
+            agent:
+              prompt: |
+                Execute the task assigned to you:
+                
+                Task Title: $(jq -r '.title' <<< '$STEP_OUTPUT')
+                Task Description: $(jq -r '.description // "No description"' <<< '$STEP_OUTPUT')
+                Task ID: $(jq -r '.id' <<< '$STEP_OUTPUT')
+                
+                Follow these steps:
+                1. Understand the task requirements
+                2. Implement the solution
+                3. Report progress periodically using the shadowme CLI:
+                   - shadowme progress <task-id> <progress%> <message>
+                4. Complete the task and commit changes
+                5. Report completion:
+                   - shadowme complete <task-id> <summary>
+                
+                Remember to:
+                - Use the shadowme CLI tools in /workspace/ShadowMe/plugins/ShadowMe-plugin/scripts/
+                - Send progress updates every few minutes
+                - Generate meaningful git commits
+                - Update the board with your progress
+
+    on_empty:
+      - name: No tasks found
+        bash: |
+          echo "No pending tasks found"
+          # Send heartbeat
+          curl -s -X POST "${board_url}/api/webhook/cc" \
+            -H "Content-Type: application/json" \
+            ${api_key:+-H "x-cc-api-key: $api_key"} \
+            -d '{
+              "type": "sync.heartbeat",
+              "status": "online",
+              "timestamp": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'",
+              "messageId": "heartbeat-'$(date +%s)'",
+              "senderId": "shadow-1"
+            }'
