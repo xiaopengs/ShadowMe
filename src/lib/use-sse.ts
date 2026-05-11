@@ -178,7 +178,7 @@ export function useSSE(options: SSEOptions = {}): UseSSEReturn {
     };
 
     // Add event listeners for common events
-    const eventsToListen = ['connected', 'message:new', 'message:log', 'task:updated', 'task:progress', 'task:completed', 'task:error', 'shadow:status', 'shadow:heartbeat', 'stats:updated'];
+    const eventsToListen = ['connected', 'message:new', 'message:log', 'task:updated', 'task:progress', 'task:completed', 'task:created', 'task:error', 'task:commit', 'task:mr_created', 'shadow:status', 'shadow:heartbeat', 'stats:updated'];
     
     eventsToListen.forEach(eventName => {
       eventSource.addEventListener(eventName, (event) => handleEvent(eventName, event));

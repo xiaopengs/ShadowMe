@@ -2,7 +2,6 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PLUGIN_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Load config
 CONFIG_FILE="${SHADOWME_CONFIG:-${HOME}/.shadowme/config}"
@@ -21,31 +20,23 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 log_info() {
-  echo -e "${BLUE}ℹ️${NC} $1"
+  echo -e "${BLUE}ℹ️${NC} $(date '+%H:%M:%S') $1"
 }
 
 log_success() {
-  echo -e "${GREEN}✅${NC} $1"
+  echo -e "${GREEN}✅${NC} $(date '+%H:%M:%S') $1"
 }
 
 log_warn() {
-  echo -e "${YELLOW}⚠️${NC} $1"
+  echo -e "${YELLOW}⚠️${NC} $(date '+%H:%M:%S') $1"
 }
 
 log_error() {
-  echo -e "${RED}❌${NC} $1"
+  echo -e "${RED}❌${NC} $(date '+%H:%M:%S') $1"
 }
 
 log_task() {
-  echo -e "${CYAN}📋${NC} $1"
-}
-
-log_work() {
-  echo -e "${BLUE}🔧${NC} $1"
-}
-
-log_result() {
-  echo -e "${GREEN}📦${NC} $1"
+  echo -e "${CYAN}📋${NC} $(date '+%H:%M:%S') $1"
 }
 
 # API request helper
@@ -79,49 +70,18 @@ send_message() {
   api_request "POST" "/api/webhook/cc" "$msg_data" >/dev/null 2>&1
 }
 
-# Check for pending tasks and take one
-check_and_take_task() {
-  log_task "Checking for pending tasks..."
+# Take a task
+take_task() {
+  local task_id=$1
+  
+  log_task "Taking task ${task_id}..."
   
   local response
-  response=$(api_request "GET" "/api/tasks?status=pending")
+  response=$(api_request "POST" "/api/tasks/${task_id}/take")
   
-  local task_count
-  task_count=$(echo "$response" | grep -o '"id"' | wc -l)
-  
-  if [ "$task_count" -eq 0 ]; then
-    log_info "No pending tasks found"
-    return 1
-  fi
-  
-  # Get first pending task
-  local task_id
-  local task_title
-  local task_description
-  
-  task_id=$(echo "$response" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-  task_title=$(echo "$response" | grep -o '"title":"[^"]*"' | head -1 | cut -d'"' -f4)
-  task_description=$(echo "$response" | grep -o '"description":"[^"]*"' | head -1 | cut -d'"' -f4)
-  
-  if [ -z "$task_id" ]; then
-    log_warn "Failed to parse task data"
-    return 1
-  fi
-  
-  log_task "Found task: ${task_title} [${task_id:0:8}]"
-  
-  # Take the task
-  log_work "Taking task..."
-  local take_response
-  take_response=$(api_request "POST" "/api/tasks/${task_id}/take")
-  
-  if echo "$take_response" | grep -q '"id"'; then
-    log_success "Task taken successfully"
-    
-    # Send task.assign message
-    send_message "task.assign" "\"taskId\":\"${task_id}\",\"taskTitle\":\"${task_title}\""
-    
-    echo "$task_id"
+  if echo "$response" | grep -q '"id"'; then
+    log_success "Task taken"
+    send_message "task.assign" "\"taskId\":\"${task_id}\""
     return 0
   else
     log_error "Failed to take task"
@@ -129,113 +89,99 @@ check_and_take_task() {
   fi
 }
 
-# Execute a task
-execute_task() {
-  local task_id=$1
-  local task_title=$2
-  local task_description=$3
+# One-time scan for existing pending tasks on startup
+scan_existing_tasks() {
+  log_info "Scanning for existing pending tasks..."
   
-  log_task "Executing task: ${task_title}"
-  log_info "Task ID: ${task_id}"
+  local response
+  response=$(api_request "GET" "/api/tasks?status=pending")
   
-  # Send initial progress
-  send_message "task.progress" "\"taskId\":\"${task_id}\",\"progress\":0,\"message\":\"Starting task execution\""
+  # Check if there are tasks (simple grep for "id" field)
+  local task_count
+  task_count=$(echo "$response" | grep -o '"status":"pending"' | wc -l)
   
-  # Simulate task phases
-  local phases=("Analyzing requirements" "Implementing solution" "Testing changes" "Generating documentation" "Finalizing")
-  local progress=0
-  local increment=$((100 / ${#phases[@]}))
-  
-  for i in "${!phases[@]}"; do
-    local phase="${phases[$i]}"
-    progress=$((progress + increment))
-    
-    log_work "[${progress}%] ${phase}..."
-    send_message "task.progress" "\"taskId\":\"${task_id}\",\"progress\":${progress},\"message\":\"${phase}\""
-    
-    # Log each phase
-    send_message "log" "\"taskId\":\"${task_id}\",\"content\":\"${phase}\",\"level\":\"info\""
-    
-    # Simulate work (in real scenario, this would be actual work)
-    sleep 1
-  done
-  
-  # Generate task result
-  local result_summary="Task completed: ${task_title}\n\n"
-  result_summary+="Changes made:\n"
-  result_summary+="- Analyzed requirements\n"
-  result_summary+="- Implemented solution\n"
-  result_summary+="- Added tests\n"
-  result_summary+="- Generated documentation"
-  
-  # Get git info if available
-  local commit_sha=""
-  local branch=""
-  
-  if command -v git &> /dev/null && git rev-parse --git-dir > /dev/null 2>&1; then
-    commit_sha=$(git rev-parse HEAD 2>/dev/null | cut -c1-8)
-    branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-    
-    # Check for uncommitted changes
-    if ! git diff --quiet; then
-      log_info "Uncommitted changes detected, staging..."
-      git add -A
-      git commit -m "feat: Complete task - ${task_title}" || true
-      commit_sha=$(git rev-parse HEAD 2>/dev/null | cut -c1-8)
-    fi
+  if [ "$task_count" -eq 0 ]; then
+    log_info "No existing pending tasks"
+    return
   fi
   
-  # Send completion message
-  if [ -n "$commit_sha" ]; then
-    log_result "Generated commit: ${commit_sha}"
-    send_message "git.commit" "\"taskId\":\"${task_id}\",\"commitSha\":\"${commit_sha}\",\"branch\":\"${branch}\",\"message\":\"${task_title}\""
+  log_info "Found ${task_count} pending task(s), processing..."
+  
+  # Use shadowme-tools to handle each task
+  if command -v jq &> /dev/null; then
+    local task_ids
+    task_ids=$(echo "$response" | jq -r '.tasks[]?.id // empty' 2>/dev/null)
+    
+    for task_id in $task_ids; do
+      take_task "$task_id"
+    done
   fi
-  
-  send_message "task.complete" "\"taskId\":\"${task_id}\",\"summary\":\"${result_summary}\",\"commitSha\":\"${commit_sha}\""
-  
-  # Mark task as complete
-  local complete_data="{\"result\":{\"type\":\"commit\",\"summary\":\"${result_summary}\",\"commitSha\":\"${commit_sha}\"}}"
-  api_request "POST" "/api/tasks/${task_id}/complete" "$complete_data" >/dev/null
-  
-  log_success "Task completed!"
-  
-  # Return result
-  echo "${result_summary}"
 }
 
-# Main execution loop
+# SSE event-driven task listener
+# Uses curl to listen to SSE stream and react to task.created events
+listen_sse() {
+  log_info "Connecting to SSE stream..."
+  
+  local sse_url="${SHADOWME_URL}/api/sse?channels=task,shadow,stats"
+  local headers=("-H" "Accept: text/event-stream")
+  [ -n "$SHADOWME_API_KEY" ] && headers+=("-H" "x-cc-api-key: $SHADOWME_API_KEY")
+  
+  # Use curl with streaming to listen for SSE events
+  curl -N "${headers[@]}" "$sse_url" 2>/dev/null | while IFS= read -r line; do
+    # Parse SSE event lines
+    case "$line" in
+      event:\ task.created)
+        log_task "SSE: task.created event received!"
+        # Next data line will contain the task info
+        read -r data_line
+        if [[ "$data_line" == data:* ]]; then
+          local task_data="${data_line#data: }"
+          
+          # Extract task ID using simple parsing (jq if available)
+          local task_id=""
+          if command -v jq &> /dev/null; then
+            task_id=$(echo "$task_data" | jq -r '.data.task.id // .data.id // empty' 2>/dev/null)
+          else
+            # Simple grep-based extraction
+            task_id=$(echo "$task_data" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+          fi
+          
+          if [ -n "$task_id" ]; then
+            log_task "New task detected via SSE: [${task_id:0:8}]"
+            take_task "$task_id"
+          fi
+        fi
+        ;;
+      event:\ shadow:status)
+        # Shadow status update — no action needed
+        ;;
+      event:\ connected)
+        log_success "SSE connected"
+        ;;
+      :*)
+        # Heartbeat comment — ignore
+        ;;
+    esac
+  done
+}
+
+# Main
 main() {
-  log_info "🚀 ShadowMe Executor starting..."
+  log_info "🚀 ShadowMe Executor starting (SSE event-driven mode)..."
   log_info "Board URL: ${SHADOWME_URL}"
   log_info "Press Ctrl+C to stop"
+  echo ""
   
-  while true; do
-    echo ""
-    log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    log_info "Checking for tasks..."
-    
-    if task_id=$(check_and_take_task); then
-      # Get task details
-      local task_info
-      task_info=$(api_request "GET" "/api/tasks/${task_id}")
-      
-      local task_title
-      local task_description
-      
-      task_title=$(echo "$task_info" | grep -o '"title":"[^"]*"' | head -1 | cut -d'"' -f4)
-      task_description=$(echo "$task_info" | grep -o '"description":"[^"]*"' | head -1 | cut -d'"' -f4)
-      
-      echo ""
-      execute_task "$task_id" "$task_title" "$task_description"
-    else
-      log_info "No tasks available, waiting 30 seconds..."
-    fi
-    
-    # Send heartbeat
-    send_message "sync.heartbeat" "\"status\":\"online\""
-    
-    sleep 30
-  done
+  # 1. One-time scan for existing tasks
+  scan_existing_tasks
+  
+  # 2. Send initial heartbeat
+  send_message "sync.heartbeat" "\"status\":\"online\""
+  
+  # 3. Listen to SSE for new tasks (event-driven, no polling)
+  log_info "Listening for task.created events via SSE..."
+  listen_sse
 }
 
 # Handle signals

@@ -176,21 +176,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'UPDATE_TASK', payload: updated });
   }, []);
 
-  // Use SSE for shadow status updates
-  const { isConnected } = useSSE({
-    enabled: true,
-    channels: ['shadow', 'stats', 'task'],
-    onMessage: useCallback((event: string, data: any) => {
-      if (event === 'shadow:status' || event === 'shadow:heartbeat') {
-        dispatch({ type: 'SET_SHADOW', payload: data });
-      }
-    }, [])
+  // SSE event-driven updates — no polling
+  useSSE({
+    channels: ['task', 'shadow', 'stats'],
+    autoConnect: true,
+    handlers: {
+      'shadow:status': useCallback((msg: any) => {
+        dispatch({ type: 'SET_SHADOW', payload: msg.data });
+      }, []),
+      'shadow:heartbeat': useCallback((msg: any) => {
+        dispatch({ type: 'SET_SHADOW', payload: msg.data });
+      }, []),
+      'task:updated': useCallback((msg: any) => {
+        fetchTasks();
+      }, [fetchTasks]),
+      'task:completed': useCallback((msg: any) => {
+        fetchTasks();
+      }, [fetchTasks]),
+      'task:created': useCallback((msg: any) => {
+        fetchTasks();
+      }, [fetchTasks]),
+      'stats:updated': useCallback(() => {
+        fetchTasks();
+      }, [fetchTasks]),
+    },
   });
 
+  // Initial data load only — no polling
   useEffect(() => {
     fetchTasks();
 
-    const fetchShadowStatus = async () => {
+    // One-time fetch for initial shadow status
+    (async () => {
       try {
         const res = await fetch('/api/shadow/status');
         if (res.ok) {
@@ -198,16 +215,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           dispatch({ type: 'SET_SHADOW', payload: data });
         }
       } catch {
-        // Fail silently
+        // Fail silently — SSE will provide updates
       }
-    };
-
-    // Initial fetch
-    fetchShadowStatus();
-    
-    // Reduced polling frequency - only poll every 2 minutes (120,000ms) as a fallback for SSE
-    const interval = setInterval(fetchShadowStatus, 120000);
-    return () => clearInterval(interval);
+    })();
   }, []);
 
   return (

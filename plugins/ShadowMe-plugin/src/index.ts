@@ -19,8 +19,8 @@ import type {
 
 class ShadowClonePlugin extends EventEmitter {
   private config: ShadowConfig;
-  private pollingTimer: NodeJS.Timeout | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
+  private eventSource: EventSource | null = null;
   private pendingTasks: Map<string, Task> = new Map();
 
   constructor(config: Partial<ShadowConfig> = {}) {
@@ -33,7 +33,7 @@ class ShadowClonePlugin extends EventEmitter {
       gitlabDefaultProject: config.gitlabDefaultProject || process.env.GITLAB_DEFAULT_PROJECT || '',
       workingDirectory: config.workingDirectory || process.env.WORKING_DIRECTORY || '.',
       autoTakeTasks: config.autoTakeTasks ?? true,
-      pollingInterval: config.pollingInterval || 10000,
+      pollingInterval: config.pollingInterval || 0,
     };
   }
 
@@ -59,9 +59,13 @@ class ShadowClonePlugin extends EventEmitter {
       console.log('   Connection: ❌ Board unreachable');
     }
 
-    this.startPolling();
+    this.connectSSE();
     this.startHeartbeat();
-    console.log('✅ ShadowMe Plugin initialized');
+
+    // One-time scan for existing pending tasks on startup
+    await this.scanExistingTasks();
+
+    console.log('✅ ShadowMe Plugin initialized (SSE event-driven mode)');
   }
 
   async checkConnection(): Promise<boolean> {
@@ -75,34 +79,101 @@ class ShadowClonePlugin extends EventEmitter {
     }
   }
 
-  private startPolling(): void {
-    this.pollingTimer = setInterval(async () => {
-      await this.checkNewTasks();
-    }, this.config.pollingInterval);
+  // ===== SSE Event-Driven Task Detection =====
+
+  private connectSSE(): void {
+    const sseUrl = `${this.config.boardUrl}/api/sse?channels=task,shadow,stats`;
+    console.log(`   SSE: Connecting to ${sseUrl}`);
+
+    this.eventSource = new EventSource(sseUrl);
+
+    this.eventSource.onopen = () => {
+      console.log('   SSE: ✅ Connected');
+    };
+
+    this.eventSource.onerror = () => {
+      console.error('   SSE: ❌ Connection error, will auto-reconnect');
+    };
+
+    // Listen for task.created — the key event that triggers task pickup
+    this.eventSource.addEventListener('task.created', (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        const task = msg.data?.task || msg.data;
+        if (task && task.id) {
+          console.log(`📋 SSE: New task created — ${task.title} [${task.id.slice(0, 8)}]`);
+          this.onNewTask(task);
+        }
+      } catch (err) {
+        console.error('SSE task.created parse error:', err);
+      }
+    });
+
+    // Listen for task.cancel
+    this.eventSource.addEventListener('task.cancel', (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        const taskId = msg.data?.taskId;
+        if (taskId) {
+          console.log(`🚫 SSE: Task cancelled — [${taskId.slice(0, 8)}]`);
+          this.pendingTasks.delete(taskId);
+          this.emit('task:cancelled', taskId);
+        }
+      } catch (err) {
+        console.error('SSE task.cancel parse error:', err);
+      }
+    });
+
+    // Listen for shadow status changes from board
+    this.eventSource.addEventListener('shadow:status', (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        this.emit('shadow:status', msg.data);
+      } catch {
+        // Ignore parse errors
+      }
+    });
   }
 
-  private async checkNewTasks(): Promise<void> {
-    try {
-      const tasks = await this.getPendingTasks();
-      tasks.forEach((task) => {
-        if (!this.pendingTasks.has(task.id)) {
-          this.pendingTasks.set(task.id, task);
-          this.emit('task:pending', task);
-          console.log(`📋 New task detected: ${task.title} [${task.id.slice(0, 8)}]`);
-          if (this.config.autoTakeTasks) {
-            this.takeTask(task.id);
-          }
-        }
-      });
-    } catch (err) {
-      console.error('Failed to check tasks:', err);
+  private async onNewTask(task: Task): Promise<void> {
+    if (this.pendingTasks.has(task.id)) return;
+    this.pendingTasks.set(task.id, task);
+    this.emit('task:pending', task);
+
+    if (this.config.autoTakeTasks) {
+      await this.takeTask(task.id);
     }
   }
+
+  private async scanExistingTasks(): Promise<void> {
+    try {
+      const tasks = await this.getPendingTasks();
+      if (tasks.length > 0) {
+        console.log(`📋 Found ${tasks.length} existing pending task(s)`);
+        for (const task of tasks) {
+          if (!this.pendingTasks.has(task.id)) {
+            this.pendingTasks.set(task.id, task);
+            this.emit('task:pending', task);
+            console.log(`   → ${task.title} [${task.id.slice(0, 8)}]`);
+            if (this.config.autoTakeTasks) {
+              await this.takeTask(task.id);
+            }
+          }
+        }
+      } else {
+        console.log('📋 No existing pending tasks');
+      }
+    } catch (err) {
+      console.error('Failed to scan existing tasks:', err);
+    }
+  }
+
+  // ===== Heartbeat (only, no task polling) =====
 
   private startHeartbeat(): void {
     this.heartbeatTimer = setInterval(() => {
       this.sendHeartbeat();
-    }, 30000);
+    }, 60000);
   }
 
   private async sendHeartbeat(): Promise<void> {
@@ -122,6 +193,8 @@ class ShadowClonePlugin extends EventEmitter {
       console.error('Failed to send heartbeat:', err);
     }
   }
+
+  // ===== Task Operations =====
 
   async getTasks(status?: string): Promise<Task[]> {
     try {
@@ -177,6 +250,8 @@ class ShadowClonePlugin extends EventEmitter {
       const data = await response.json();
       console.log(`🎯 Task taken: ${taskId}`);
       this.emit('task:taken', data);
+
+      await this.sendTaskAssign(taskId, data.title || 'Unknown Task');
       return data;
     } catch (err) {
       console.error('Failed to take task:', err);
@@ -268,9 +343,6 @@ class ShadowClonePlugin extends EventEmitter {
 
   // ===== Protocol Message Methods =====
 
-  /**
-   * Send a generic CC message via webhook
-   */
   async sendMessage(message: CCMessage): Promise<boolean> {
     try {
       const response = await fetch(`${this.config.boardUrl}/api/webhook/cc`, {
@@ -286,7 +358,6 @@ class ShadowClonePlugin extends EventEmitter {
       }
 
       const result = await response.json();
-      console.log(`📤 Message sent: ${message.type}`, { messageId: message.messageId, success: result.success });
       return result.success;
     } catch (err) {
       console.error('Failed to send message:', err);
@@ -294,9 +365,6 @@ class ShadowClonePlugin extends EventEmitter {
     }
   }
 
-  /**
-   * Create base message structure
-   */
   private createBaseMessage(type: CCMessage['type']): CCBaseMessage {
     return {
       type,
@@ -306,9 +374,6 @@ class ShadowClonePlugin extends EventEmitter {
     };
   }
 
-  /**
-   * Send task.assign message
-   */
   async sendTaskAssign(taskId: string, taskTitle: string): Promise<boolean> {
     const message: CCTaskAssignMessage = {
       ...this.createBaseMessage('task.assign'),
@@ -318,9 +383,6 @@ class ShadowClonePlugin extends EventEmitter {
     return this.sendMessage(message);
   }
 
-  /**
-   * Send task.progress message
-   */
   async sendTaskProgress(taskId: string, progress: number, message: string): Promise<boolean> {
     const progressMessage: CCTaskProgressMessage = {
       ...this.createBaseMessage('task.progress'),
@@ -331,9 +393,6 @@ class ShadowClonePlugin extends EventEmitter {
     return this.sendMessage(progressMessage);
   }
 
-  /**
-   * Send task.complete message
-   */
   async sendTaskComplete(taskId: string, summary: string, commitSha?: string, duration?: string): Promise<boolean> {
     const message: CCTaskCompleteMessage = {
       ...this.createBaseMessage('task.complete'),
@@ -345,9 +404,6 @@ class ShadowClonePlugin extends EventEmitter {
     return this.sendMessage(message);
   }
 
-  /**
-   * Send task.error message
-   */
   async sendTaskError(taskId: string, error: string, stack?: string): Promise<boolean> {
     const message: CCTaskErrorMessage = {
       ...this.createBaseMessage('task.error'),
@@ -358,9 +414,6 @@ class ShadowClonePlugin extends EventEmitter {
     return this.sendMessage(message);
   }
 
-  /**
-   * Send log message
-   */
   async sendLog(taskId: string, content: string, level: 'info' | 'progress' | 'warning' | 'error' = 'info'): Promise<boolean> {
     const message: CCLogMessage = {
       ...this.createBaseMessage('log'),
@@ -371,9 +424,6 @@ class ShadowClonePlugin extends EventEmitter {
     return this.sendMessage(message);
   }
 
-  /**
-   * Send git.commit message
-   */
   async sendGitCommit(taskId: string, commitSha: string, commitMessage: string, files?: string[]): Promise<boolean> {
     const message: CCGitCommitMessage = {
       ...this.createBaseMessage('git.commit'),
@@ -385,9 +435,6 @@ class ShadowClonePlugin extends EventEmitter {
     return this.sendMessage(message);
   }
 
-  /**
-   * Send git.mr_created message
-   */
   async sendGitMRCreated(
     taskId: string, 
     title: string, 
@@ -406,9 +453,6 @@ class ShadowClonePlugin extends EventEmitter {
     return this.sendMessage(message);
   }
 
-  /**
-   * Send sync.heartbeat message
-   */
   async sendSyncHeartbeat(status: 'online' | 'busy' | 'idle' = 'online'): Promise<boolean> {
     const message: CCSyncHeartbeatMessage = {
       ...this.createBaseMessage('sync.heartbeat'),
@@ -418,8 +462,9 @@ class ShadowClonePlugin extends EventEmitter {
   }
 
   destroy(): void {
-    if (this.pollingTimer) {
-      clearInterval(this.pollingTimer);
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = null;
     }
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
