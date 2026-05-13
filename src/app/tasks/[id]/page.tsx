@@ -33,14 +33,10 @@ export default function TaskDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [sseConnected, setSSEConnected] = useState(false);
-  const [connectionMode, setConnectionMode] = useState<'sse' | 'poll'>('sse');
 
-  // SSE and polling refs
   const eventSourceRef = useRef<EventSource | null>(null);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Demo messages for terminal style (fallback)
   const [demoMessages] = useState<SyncMessage[]>([
     {
       id: 'msg-1',
@@ -68,151 +64,12 @@ export default function TaskDetailPage() {
     },
   ]);
 
-  // SSE connection setup
-  const connectSSE = useCallback(() => {
-    // Clean up existing connection
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-    }
-
-    // Check if SSE is supported
-    if (typeof EventSource === 'undefined') {
-      console.warn('SSE not supported, falling back to polling');
-      setConnectionMode('poll');
-      return;
-    }
-
-    try {
-      const eventSource = new EventSource(`/api/sse?channels=messages,task`);
-      eventSourceRef.current = eventSource;
-
-      eventSource.onopen = () => {
-        console.log('SSE connected');
-        setSSEConnected(true);
-        setConnectionMode('sse');
-      };
-
-      // Handle connection event
-      eventSource.addEventListener('connected', (event) => {
-        console.log('SSE handshake complete', event);
-        setSSEConnected(true);
-      });
-
-      // Handle new messages
-      eventSource.addEventListener('message:new', (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.data.taskId === taskId) {
-            const newMessage: SyncMessage = {
-              id: data.data.messageId || `msg-${Date.now()}`,
-              type: data.data.type,
-              content: data.data.content,
-              timestamp: data.data.timestamp || new Date().toISOString(),
-            };
-            setMessages(prev => {
-              // Avoid duplicates
-              if (prev.some(m => m.id === newMessage.id)) return prev;
-              return [...prev, newMessage];
-            });
-          }
-        } catch (e) {
-          console.error('Error parsing SSE message:', e);
-        }
-      });
-
-      // Handle log messages
-      eventSource.addEventListener('message:log', (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.data.taskId === taskId) {
-            const logMessage: SyncMessage = {
-              id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-              type: 'claude',
-              content: data.data.log,
-              timestamp: data.data.timestamp || new Date().toISOString(),
-            };
-            setMessages(prev => [...prev, logMessage]);
-          }
-        } catch (e) {
-          console.error('Error parsing log message:', e);
-        }
-      });
-
-      // Handle task updates
-      eventSource.addEventListener('task:updated', (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.data.taskId === taskId) {
-            // Refresh task data
-            fetchTask();
-          }
-        } catch (e) {
-          console.error('Error parsing task update:', e);
-        }
-      });
-
-      // Handle task completion
-      eventSource.addEventListener('task:completed', (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.data.taskId === taskId) {
-            // Refresh task data
-            fetchTask();
-          }
-        } catch (e) {
-          console.error('Error parsing task completion:', e);
-        }
-      });
-
-      // Handle errors
-      eventSource.onerror = (err) => {
-        console.error('SSE error:', err);
-        setSSEConnected(false);
-        
-        // Clean up
-        eventSource.close();
-        eventSourceRef.current = null;
-
-        // Fall back to polling after a brief delay
-        console.log('SSE connection failed, falling back to polling');
-        setConnectionMode('poll');
-      };
-
-    } catch (err) {
-      console.error('Failed to create SSE connection:', err);
-      setConnectionMode('poll');
-    }
-  }, [taskId]);
-
-  // Fallback polling
-  const startPolling = useCallback(() => {
-    if (pollIntervalRef.current) return;
-    
-    pollIntervalRef.current = setInterval(() => {
-      pollMessages();
-    }, 5000);
-  }, []);
-
-  const stopPolling = useCallback(() => {
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
-    }
-  }, []);
-
-  // Fetch task data
   const fetchTask = useCallback(async () => {
     try {
       const res = await fetch(`/api/tasks/${taskId}`);
       if (!res.ok) {
-        if (res.status === 404) {
-          setError('Task not found');
-        } else {
-          throw new Error('Failed to fetch task');
-        }
+        if (res.status === 404) setError('Task not found');
+        else throw new Error('Failed to fetch task');
         return;
       }
       const data = await res.json();
@@ -226,52 +83,109 @@ export default function TaskDetailPage() {
     }
   }, [taskId]);
 
-  // Poll for messages (fallback mode)
-  const pollMessages = useCallback(async () => {
+  const fetchMessages = useCallback(async () => {
     try {
       const res = await fetch(`/api/tasks/${taskId}/messages`);
       if (res.ok) {
         const data = await res.json();
         setMessages(data.messages || []);
       }
-    } catch (err) {
-      // Silently fail for polling
+    } catch {
+      // Silently fail
     }
   }, [taskId]);
 
-  // Initial setup
+  // SSE connection — event-driven, no polling fallback
+  const connectSSE = useCallback(() => {
+    if (eventSourceRef.current) eventSourceRef.current.close();
+    if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+
+    if (typeof EventSource === 'undefined') return;
+
+    const es = new EventSource(`/api/sse?channels=messages,task`);
+    eventSourceRef.current = es;
+
+    es.onopen = () => setSSEConnected(true);
+
+    es.addEventListener('connected', () => setSSEConnected(true));
+
+    es.addEventListener('message:new', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.data.taskId === taskId) {
+          const newMessage: SyncMessage = {
+            id: data.data.messageId || `msg-${Date.now()}`,
+            type: data.data.type,
+            content: data.data.content,
+            timestamp: data.data.timestamp || new Date().toISOString(),
+          };
+          setMessages(prev => {
+            if (prev.some(m => m.id === newMessage.id)) return prev;
+            return [...prev, newMessage];
+          });
+        }
+      } catch {}
+    });
+
+    es.addEventListener('message:log', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.data.taskId === taskId) {
+          const logMessage: SyncMessage = {
+            id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            type: 'claude',
+            content: data.data.log || data.data.content,
+            timestamp: data.data.timestamp || new Date().toISOString(),
+          };
+          setMessages(prev => [...prev, logMessage]);
+        }
+      } catch {}
+    });
+
+    es.addEventListener('task:updated', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.data.taskId === taskId) fetchTask();
+      } catch {}
+    });
+
+    es.addEventListener('task:completed', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.data.taskId === taskId) fetchTask();
+      } catch {}
+    });
+
+    es.addEventListener('task:created', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.data.taskId === taskId) fetchTask();
+      } catch {}
+    });
+
+    es.onerror = () => {
+      setSSEConnected(false);
+      es.close();
+      eventSourceRef.current = null;
+    };
+  }, [taskId, fetchTask]);
+
+  // Initial load
   useEffect(() => {
     fetchTask();
-  }, [fetchTask]);
+    fetchMessages();
+  }, [fetchTask, fetchMessages]);
 
-  // SSE connection or polling based on mode
+  // SSE lifecycle
   useEffect(() => {
     if (isLoading) return;
-
-    if (connectionMode === 'sse') {
-      connectSSE();
-    } else {
-      pollMessages();
-      startPolling();
-    }
+    connectSSE();
 
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
-      stopPolling();
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
+      eventSourceRef.current?.close();
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
     };
-  }, [isLoading, connectionMode, connectSSE, pollMessages, startPolling, stopPolling]);
-
-  // Reconnect SSE when switching back
-  const switchToSSE = useCallback(() => {
-    stopPolling();
-    setConnectionMode('sse');
-    connectSSE();
-  }, [connectSSE, stopPolling]);
+  }, [isLoading, connectSSE]);
 
   const getPriorityClass = (priority: Priority) => {
     switch (priority) {
@@ -280,11 +194,6 @@ export default function TaskDetailPage() {
       case 'medium': return 'priority-medium';
       default: return 'priority-low';
     }
-  };
-
-  const formatDate = (timestamp: string | Date) => {
-    const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   const handleSendMessage = async () => {
@@ -298,7 +207,6 @@ export default function TaskDetailPage() {
       timestamp: new Date().toISOString(),
     };
 
-    // Optimistically add message
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
 
@@ -310,14 +218,9 @@ export default function TaskDetailPage() {
       });
 
       if (!res.ok) throw new Error('Failed to send message');
-      
-      // Wait a bit and refresh messages
-      setTimeout(async () => {
-        await pollMessages();
-      }, 1000);
+      fetchMessages();
     } catch (err) {
       console.error('Error sending message:', err);
-      // Remove optimistic message on error
       setMessages(prev => prev.filter(m => m.id !== userMessage.id));
       setInputValue(inputValue);
     } finally {
@@ -325,7 +228,6 @@ export default function TaskDetailPage() {
     }
   };
 
-  // Loading state
   if (isLoading) {
     return (
       <AppLayout>
@@ -335,7 +237,6 @@ export default function TaskDetailPage() {
     );
   }
 
-  // Error state
   if (error || !task) {
     return (
       <AppLayout>
@@ -363,12 +264,10 @@ export default function TaskDetailPage() {
     'Get approval from team lead',
   ];
 
-  // Determine CC status based on task state
   const ccStatus = task.status === 'in_progress' ? 'working' : task.status === 'completed' ? 'idle' : 'idle';
 
   return (
     <AppLayout>
-      {/* Glass Header */}
       <GlassHeader 
         showBackButton 
         backHref="/tasks" 
@@ -377,7 +276,6 @@ export default function TaskDetailPage() {
       />
       
       <div className="max-w-[1600px] mx-auto p-4 md:p-6">
-        {/* Breadcrumb Navigation */}
         <nav className="flex items-center gap-2 text-xs text-[var(--color-on-surface-variant)] mb-6">
           <Link href="/" className="hover:text-[var(--color-primary)] transition-colors">Dashboard</Link>
           <ChevronRight size={12} />
@@ -385,50 +283,28 @@ export default function TaskDetailPage() {
           <ChevronRight size={12} />
           <span className="text-[var(--color-on-surface)]">{task.id.slice(0, 10).toUpperCase()}</span>
           
-          {/* Connection Status */}
           <div className="ml-auto flex items-center gap-2">
-            {connectionMode === 'sse' && (
-              <button
-                onClick={() => setConnectionMode('poll')}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-[var(--color-surface-container)] text-[var(--color-secondary)] hover:bg-[var(--color-surface-container-high)] transition-colors"
-                title="Click to switch to polling mode"
-              >
-                {sseConnected ? (
-                  <>
-                    <Wifi size={12} className="text-[var(--color-secondary)]" />
-                    <span className="animate-pulse">LIVE</span>
-                  </>
-                ) : (
-                  <>
-                    <WifiOff size={12} className="text-[var(--color-outline)]" />
-                    <span>RECONNECTING</span>
-                  </>
-                )}
-              </button>
-            )}
-            {connectionMode === 'poll' && (
-              <button
-                onClick={switchToSSE}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-[var(--color-surface-container)] text-[var(--color-outline)] hover:bg-[var(--color-surface-container-high)] transition-colors"
-                title="Click to switch to SSE mode"
-              >
+            {sseConnected ? (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-[var(--color-surface-container)] text-[var(--color-secondary)]">
+                <Wifi size={12} />
+                <span className="animate-pulse">LIVE</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-[var(--color-surface-container)] text-[var(--color-outline)]">
                 <WifiOff size={12} />
-                <span>5S POLL</span>
-              </button>
+                <span>DISCONNECTED</span>
+              </span>
             )}
           </div>
         </nav>
 
-        {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_500px] gap-6 items-start">
-          {/* Left Column: Task Details */}
           <section className="
             rounded-xl p-6 flex flex-col gap-6
             bg-gradient-to-br from-[var(--color-surface-container-low)]/80 to-[var(--color-surface-container-low)]/90
             backdrop-blur-xl border border-[var(--color-outline-variant)]/10
             shadow-[0_8px_32px_rgba(0,0,0,0.1)]
           ">
-            {/* Task ID & Title */}
             <div className="flex justify-between items-start">
               <div>
                 <p className="font-code-label text-[10px] text-[var(--color-secondary)] mb-2">{task.id.slice(0, 10).toUpperCase()}</p>
@@ -443,7 +319,6 @@ export default function TaskDetailPage() {
               </button>
             </div>
 
-            {/* Meta Info Bar */}
             <div className="flex flex-wrap gap-4 items-center py-4 border-y border-[var(--color-outline-variant)]/20">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-[var(--color-surface-bright)] border border-[var(--color-outline-variant)]/50 overflow-hidden shrink-0 flex items-center justify-center">
@@ -477,7 +352,6 @@ export default function TaskDetailPage() {
               </div>
             </div>
 
-            {/* Description */}
             <div>
               <p className="font-body text-sm text-[var(--color-on-surface-variant)] leading-relaxed">
                 {task.description || 'No description provided.'}
@@ -494,7 +368,6 @@ export default function TaskDetailPage() {
               </ul>
             </div>
 
-            {/* GitLab Integration */}
             <div className="mt-auto pt-6 border-t border-[var(--color-outline-variant)]/20">
               <div className="bg-[var(--color-surface-container)] rounded-lg p-4 border border-[var(--color-outline-variant)]/30 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -519,7 +392,6 @@ export default function TaskDetailPage() {
             </div>
           </section>
 
-          {/* Right Column: CC Sync Log - Terminal Style */}
           <section className="h-[calc(100vh-140px)] lg:h-auto lg:max-h-[calc(100vh-140px)]">
             <CCSyncLog
               messages={messages.length > 0 ? messages : demoMessages}

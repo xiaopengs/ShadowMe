@@ -177,29 +177,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // SSE event-driven updates — no polling
+  // Stable references to prevent re-connection loops
+  const sseChannels = ['task', 'shadow', 'stats'] as const;
+  const sseHandlers = {
+    'shadow:status': (msg: any) => dispatch({ type: 'SET_SHADOW', payload: msg.data }),
+    'shadow:heartbeat': (msg: any) => dispatch({ type: 'SET_SHADOW', payload: msg.data }),
+  } as const;
+
   useSSE({
-    channels: ['task', 'shadow', 'stats'],
+    channels: sseChannels as unknown as string[],
     autoConnect: true,
-    handlers: {
-      'shadow:status': useCallback((msg: any) => {
-        dispatch({ type: 'SET_SHADOW', payload: msg.data });
-      }, []),
-      'shadow:heartbeat': useCallback((msg: any) => {
-        dispatch({ type: 'SET_SHADOW', payload: msg.data });
-      }, []),
-      'task:updated': useCallback((msg: any) => {
-        fetchTasks();
-      }, [fetchTasks]),
-      'task:completed': useCallback((msg: any) => {
-        fetchTasks();
-      }, [fetchTasks]),
-      'task:created': useCallback((msg: any) => {
-        fetchTasks();
-      }, [fetchTasks]),
-      'stats:updated': useCallback(() => {
-        fetchTasks();
-      }, [fetchTasks]),
-    },
+    handlers: sseHandlers as Record<string, (data: any) => void>,
   });
 
   // Initial data load only — no polling

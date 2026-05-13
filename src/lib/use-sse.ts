@@ -15,41 +15,24 @@ export interface SSEMessage<T = unknown> {
 }
 
 export interface SSEOptions {
-  /** Channels to subscribe to (comma-separated) */
   channels?: string[];
-  /** Auto-connect on mount (default: true) */
   autoConnect?: boolean;
-  /** Reconnect on error (default: true) */
   autoReconnect?: boolean;
-  /** Reconnect delay in ms (default: 3000) */
   reconnectDelay?: number;
-  /** Maximum reconnect attempts (default: 5) */
   maxReconnectAttempts?: number;
-  /** Callback when connection opens */
   onOpen?: () => void;
-  /** Callback when connection closes */
   onClose?: () => void;
-  /** Callback on error */
   onError?: (error: Event) => void;
-  /** Event handlers by event name */
   handlers?: Record<string, (data: SSEMessage) => void>;
 }
 
 export interface UseSSEReturn {
-  /** Whether SSE is currently connected */
   isConnected: boolean;
-  /** Connection status */
   status: 'connecting' | 'connected' | 'disconnected' | 'error';
-  /** Manual connect function */
   connect: () => void;
-  /** Manual disconnect function */
   disconnect: () => void;
-  /** Subscribe to a custom event */
   on: <T>(event: string, handler: (data: SSEMessage<T>) => void) => () => void;
-  /** Emit an event locally (not sent to server) */
   emit: <T>(event: string, data: T) => void;
-  /** Get statistics */
-  getStats: () => { totalEvents: number; lastEvent: string | null };
 }
 
 export function useSSE(options: SSEOptions = {}): UseSSEReturn {
@@ -68,189 +51,144 @@ export function useSSE(options: SSEOptions = {}): UseSSEReturn {
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
   const [isConnected, setIsConnected] = useState(false);
-  
-  // Event handlers registry
   const handlersRef = useRef<Record<string, Set<(data: SSEMessage) => void>>>({});
-  
-  // Event counter for stats
-  const eventCountRef = useRef(0);
-  const lastEventTimeRef = useRef<string | null>(null);
+  const stableRefs = useRef({
+    channels,
+    autoReconnect,
+    reconnectDelay,
+    maxReconnectAttempts,
+    onOpen,
+    onClose,
+    onError,
+  });
 
-  // Register initial handlers
+  // Keep stable refs up to date without triggering effects
+  stableRefs.current = {
+    channels,
+    autoReconnect,
+    reconnectDelay,
+    maxReconnectAttempts,
+    onOpen,
+    onClose,
+    onError,
+  };
+
+  // Register handlers — only runs when handlers keys change
+  const prevHandlerKeysRef = useRef<string[]>([]);
   useEffect(() => {
-    Object.entries(handlers).forEach(([event, handler]) => {
-      registerHandler(event, handler as (data: SSEMessage) => void);
-    });
-  }, [handlers]);
+    const currentKeys = Object.keys(handlers);
+    const prevKeys = prevHandlerKeysRef.current;
+    const changed = currentKeys.length !== prevKeys.length
+      || currentKeys.some(k => !prevKeys.includes(k));
 
-  const registerHandler = useCallback((event: string, handler: (data: SSEMessage) => void) => {
-    if (!handlersRef.current[event]) {
-      handlersRef.current[event] = new Set();
+    if (changed) {
+      prevHandlerKeysRef.current = currentKeys;
+      Object.entries(handlers).forEach(([event, handler]) => {
+        if (!handlersRef.current[event]) {
+          handlersRef.current[event] = new Set();
+        }
+        handlersRef.current[event].add(handler as (data: SSEMessage) => void);
+      });
     }
-    handlersRef.current[event].add(handler);
-    
-    // Return cleanup function
-    return () => {
-      handlersRef.current[event]?.delete(handler);
-    };
-  }, []);
+  }, [handlers]);
 
   const handleEvent = useCallback((eventName: string, event: MessageEvent) => {
     try {
       const data = JSON.parse(event.data) as SSEMessage;
-      
-      // Track statistics
-      eventCountRef.current++;
-      lastEventTimeRef.current = data.timestamp;
-      
-      // Call registered handlers
       const eventHandlers = handlersRef.current[eventName];
       if (eventHandlers) {
-        eventHandlers.forEach(handler => {
-          try {
-            handler(data);
-          } catch (err) {
-            console.error(`Error in SSE handler for ${eventName}:`, err);
-          }
-        });
+        eventHandlers.forEach(h => { try { h(data); } catch {} });
       }
-      
-      // Also call generic 'message' handler
-      const genericHandlers = handlersRef.current['message'];
-      if (genericHandlers) {
-        genericHandlers.forEach(handler => handler(data));
-      }
-    } catch (err) {
-      console.error('Error parsing SSE message:', err);
+    } catch {
+      // Ignore parse errors
     }
   }, []);
 
+  // Stable connect — reads from refs, not dependencies
   const connect = useCallback(() => {
-    // Check SSE support
     if (typeof EventSource === 'undefined') {
-      console.warn('SSE is not supported in this browser');
-      setStatus('error');
+      console.warn('SSE not supported');
       return;
     }
 
-    // Clean up existing connection
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-    }
+    if (eventSourceRef.current) eventSourceRef.current.close();
+    if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
 
     setStatus('connecting');
-    
-    const channelParam = channels.join(',');
-    const eventSource = new EventSource(`/api/sse?channels=${channelParam}`);
-    eventSourceRef.current = eventSource;
 
-    eventSource.onopen = () => {
+    const ch = stableRefs.current.channels.join(',');
+    const es = new EventSource(`/api/sse?channels=${ch}`);
+    eventSourceRef.current = es;
+
+    es.onopen = () => {
       setStatus('connected');
       setIsConnected(true);
       reconnectAttemptsRef.current = 0;
-      onOpen?.();
+      stableRefs.current.onOpen?.();
     };
 
-    eventSource.onerror = (error) => {
-      console.error('SSE error:', error);
+    es.onerror = () => {
       setStatus('error');
       setIsConnected(false);
-      onError?.(error);
-      onClose?.();
+      stableRefs.current.onClose?.();
 
-      // Auto-reconnect logic
-      if (autoReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
+      const { autoReconnect: ar, maxReconnectAttempts: max, reconnectDelay: delay } = stableRefs.current;
+      if (ar && reconnectAttemptsRef.current < max) {
         reconnectAttemptsRef.current++;
-        console.log(`SSE reconnecting... attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts}`);
-        
-        reconnectTimeoutRef.current = setTimeout(() => {
-          connect();
-        }, reconnectDelay);
-      } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-        console.error('Max SSE reconnect attempts reached');
+        reconnectTimeoutRef.current = setTimeout(() => connect(), delay);
       }
     };
 
-    // Add event listeners for common events
-    const eventsToListen = ['connected', 'message:new', 'message:log', 'task:updated', 'task:progress', 'task:completed', 'task:created', 'task:error', 'task:commit', 'task:mr_created', 'shadow:status', 'shadow:heartbeat', 'stats:updated'];
-    
-    eventsToListen.forEach(eventName => {
-      eventSource.addEventListener(eventName, (event) => handleEvent(eventName, event));
+    const events = ['connected', 'task:updated', 'task:progress', 'task:completed',
+      'task:created', 'task:error', 'task:commit', 'task:mr_created',
+      'shadow:status', 'shadow:heartbeat', 'stats:updated',
+      'message:new', 'message:log'];
+
+    events.forEach(ev => {
+      es.addEventListener(ev, (e) => handleEvent(ev, e));
     });
 
-  }, [channels, autoReconnect, reconnectDelay, maxReconnectAttempts, handleEvent, onOpen, onError, onClose]);
+  }, [handleEvent]);
 
   const disconnect = useCallback(() => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
+    eventSourceRef.current?.close();
+    eventSourceRef.current = null;
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
-    
     setStatus('disconnected');
     setIsConnected(false);
     reconnectAttemptsRef.current = 0;
-    onClose?.();
-  }, [onClose]);
+  }, []);
 
-  // Auto-connect on mount
+  // Auto-connect on mount — only once, stable connect reference
+  const didAutoConnect = useRef(false);
   useEffect(() => {
-    if (autoConnect) {
+    if (autoConnect && !didAutoConnect.current) {
+      didAutoConnect.current = true;
       connect();
     }
-
     return () => {
       disconnect();
+      didAutoConnect.current = false;
     };
   }, [autoConnect, connect, disconnect]);
 
-  // Subscribe to custom events
   const on = useCallback(<T,>(event: string, handler: (data: SSEMessage<T>) => void) => {
-    return registerHandler(event, handler as (data: SSEMessage) => void);
-  }, [registerHandler]);
+    if (!handlersRef.current[event]) handlersRef.current[event] = new Set();
+    handlersRef.current[event].add(handler as (data: SSEMessage) => void);
+    return () => { handlersRef.current[event]?.delete(handler as (data: SSEMessage) => void); };
+  }, []);
 
-  // Emit local event (not sent to server)
   const emit = useCallback(<T,>(event: string, data: T) => {
-    const message: SSEMessage = {
-      channel: 'local',
-      event,
-      data,
-      timestamp: new Date().toISOString(),
-    };
-    
-    // Trigger handlers directly
-    const eventHandlers = handlersRef.current[event];
-    if (eventHandlers) {
-      eventHandlers.forEach(handler => handler(message));
-    }
+    const message: SSEMessage = { channel: 'local', event, data, timestamp: new Date().toISOString() };
+    handlersRef.current[event]?.forEach(h => { try { h(message); } catch {} });
   }, []);
 
-  // Get stats
-  const getStats = useCallback(() => {
-    return {
-      totalEvents: eventCountRef.current,
-      lastEvent: lastEventTimeRef.current,
-    };
-  }, []);
-
-  return {
-    isConnected,
-    status,
-    connect,
-    disconnect,
-    on,
-    emit,
-    getStats,
-  };
+  return { isConnected, status, connect, disconnect, on, emit };
 }
 
 /**
@@ -271,48 +209,33 @@ export function useTaskSSE(taskId: string) {
   const [messages, setMessages] = useState<SSEMessage[]>([]);
   const [task, setTask] = useState<Record<string, unknown> | null>(null);
   
-  const sse = useSSE({
-    channels: ['messages', 'task'],
-    autoConnect: true,
-    autoReconnect: true,
-    handlers: {
-      'message:new': (data) => {
-        const msgData = data.data as TaskSSEData;
-        if (msgData.taskId === taskId) {
-          setMessages((prev) => {
-            // Avoid duplicates
-            if (msgData.messageId && prev.some(m => (m.data as TaskSSEData).messageId === msgData.messageId)) return prev;
-            return [...prev, data];
-          });
-        }
-      },
-      'message:log': (data) => {
-        const msgData = data.data as TaskSSEData;
-        if (msgData.taskId === taskId) {
-          setMessages((prev) => [...prev, data]);
-        }
-      },
-      'task:updated': (data) => {
-        const taskData = data.data as TaskSSEData;
-        if (taskData.taskId === taskId) {
-          setTask((prev) => prev ? { ...prev, status: taskData.status } : null);
-        }
-      },
-      'task:completed': (data) => {
-        const taskData = data.data as TaskSSEData;
-        if (taskData.taskId === taskId) {
-          setTask((prev) => prev ? { ...prev, status: 'completed', result: taskData.result } : null);
-        }
-      },
+  const handlers = {
+    'message:new': (data: SSEMessage) => {
+      const msgData = data.data as TaskSSEData;
+      if (msgData.taskId === taskId) {
+        setMessages(prev => {
+          if (msgData.messageId && prev.some(m => (m.data as TaskSSEData).messageId === msgData.messageId)) return prev;
+          return [...prev, data];
+        });
+      }
     },
-  });
-
-  return {
-    messages,
-    task,
-    setTask,
-    ...sse,
+    'message:log': (data: SSEMessage) => {
+      const msgData = data.data as TaskSSEData;
+      if (msgData.taskId === taskId) setMessages(prev => [...prev, data]);
+    },
+    'task:updated': (data: SSEMessage) => {
+      const taskData = data.data as TaskSSEData;
+      if (taskData.taskId === taskId) setTask(prev => prev ? { ...prev, status: taskData.status } : null);
+    },
+    'task:completed': (data: SSEMessage) => {
+      const taskData = data.data as TaskSSEData;
+      if (taskData.taskId === taskId) setTask(prev => prev ? { ...prev, status: 'completed', result: taskData.result } : null);
+    },
   };
+
+  const sse = useSSE({ channels: ['messages', 'task'], autoConnect: true, autoReconnect: true, handlers });
+
+  return { messages, task, setTask, ...sse };
 }
 
 /**
@@ -329,28 +252,14 @@ interface ShadowSSEData {
 export function useShadowSSE() {
   const [shadowStatus, setShadowStatus] = useState<ShadowSSEData | null>(null);
   
-  const sse = useSSE({
-    channels: ['shadow', 'stats'],
-    autoConnect: true,
-    handlers: {
-      'shadow:status': (data) => {
-        setShadowStatus(data.data as ShadowSSEData);
-      },
-      'shadow:heartbeat': (data) => {
-        setShadowStatus(data.data as ShadowSSEData);
-      },
-      'shadow:task_assigned': (data) => {
-        setShadowStatus(data.data as ShadowSSEData);
-      },
-      'shadow:task_completed': (data) => {
-        setShadowStatus(data.data as ShadowSSEData);
-      },
-    },
-  });
-
-  return {
-    shadowStatus,
-    setShadowStatus,
-    ...sse,
+  const handlers = {
+    'shadow:status': (data: SSEMessage) => setShadowStatus(data.data as ShadowSSEData),
+    'shadow:heartbeat': (data: SSEMessage) => setShadowStatus(data.data as ShadowSSEData),
+    'shadow:task_assigned': (data: SSEMessage) => setShadowStatus(data.data as ShadowSSEData),
+    'shadow:task_completed': (data: SSEMessage) => setShadowStatus(data.data as ShadowSSEData),
   };
+
+  const sse = useSSE({ channels: ['shadow', 'stats'], autoConnect: true, handlers });
+
+  return { shadowStatus, setShadowStatus, ...sse };
 }

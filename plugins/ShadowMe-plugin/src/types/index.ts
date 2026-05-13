@@ -40,7 +40,6 @@ export interface ShadowConfig {
   gitlabDefaultProject: string;
   workingDirectory: string;
   autoTakeTasks: boolean;
-  pollingInterval: number;
 }
 
 export interface GitLabMR {

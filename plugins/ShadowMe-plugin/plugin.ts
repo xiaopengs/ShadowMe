@@ -9,7 +9,6 @@ async function initPlugin() {
   if (!plugin) {
     plugin = new ShadowClonePlugin({
       autoTakeTasks: true,
-      pollingInterval: 10000,
     });
     commands = new ShadowCommands(plugin);
     await plugin.initialize();
@@ -29,10 +28,10 @@ async function main() {
         await cmd.help();
         break;
       case 'start':
-        console.log('🔮 ShadowMe task monitoring started...');
+        console.log('🔮 ShadowMe task monitoring started (SSE event-driven)...');
+        console.log('   Listening for task.created events');
         console.log('   Press Ctrl+C to stop');
-        // Keep process alive
-        setInterval(() => {}, 1000);
+        // Plugin's SSE connection keeps process alive via event loop
         break;
       case 'status':
         await cmd.status();
