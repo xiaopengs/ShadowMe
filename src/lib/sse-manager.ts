@@ -273,7 +273,7 @@ if (typeof setInterval !== 'undefined') {
     
     for (const [clientId, client] of clients) {
       if (now - client.connectedAt.getTime() > staleThreshold) {
-        sseLogger.warn('Removing stale SSE client', { clientId });
+        sseLogger.debug('Removing stale SSE client', { clientId });
         removeClient(clientId);
       }
     }

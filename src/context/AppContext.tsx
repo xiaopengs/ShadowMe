@@ -33,7 +33,7 @@ const initialState: AppState = {
   shadow: {
     id: 'shadow-1',
     name: '影子分身',
-    status: 'offline',
+    status: 'online',
     lastHeartbeat: new Date().toISOString(),
     capabilities: ['代码审查', '方案设计', '技术问题解决', '文档生成'],
     autoTakeTasks: false
